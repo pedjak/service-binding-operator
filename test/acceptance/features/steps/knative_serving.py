@@ -1,9 +1,10 @@
 import re
+from environment import ctx
 from command import Command
 from openshift import Openshift
 
 
-class KnativeServing():
+class KnativeServing(object):
 
     openshift = Openshift()
     cmd = Command()
@@ -23,7 +24,7 @@ metadata:
 '''
 
     def is_present(self):
-        cmd = f'oc get knativeserving.operator.knative.dev {self.name} -n {self.namespace}'
+        cmd = f'{ctx.cli} get knativeserving.operator.knative.dev {self.name} -n {self.namespace}'
         output, exit_code = self.cmd.run(cmd)
         if exit_code != 0:
             print(f"cmd-{cmd} result for getting available knative serving is {output} with the exit code {exit_code}")
@@ -31,7 +32,7 @@ metadata:
         return True
 
     def create(self):
-        serving_output = self.openshift.oc_apply(self.knative_serving_yaml_template.format(name=self.name, namespace=self.namespace))
+        serving_output = self.openshift.apply(self.knative_serving_yaml_template.format(name=self.name, namespace=self.namespace))
         pattern = f'knativeserving.(serving|operator).knative.dev/{self.namespace}\\screated'
         if re.search(pattern, serving_output):
             return True

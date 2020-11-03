@@ -4,7 +4,7 @@ from command import Command
 from openshift import Openshift
 
 
-class EtcdOperator():
+class EtcdOperator(object):
 
     openshift = Openshift()
     cmd = Command()

@@ -25,6 +25,7 @@ from quarkus_s2i_builder_image import QuarkusS2IBuilderImage
 from serverless_operator import ServerlessOperator
 from service_binding import ServiceBinding
 from servicebindingoperator import Servicebindingoperator
+from environment import ctx
 
 
 # STEP
@@ -232,7 +233,7 @@ def then_sbo_jsonpath_is(context, json_path, sbr_name, json_value_regex):
     openshift = Openshift()
     assert openshift.search_resource_in_namespace(
         "servicebindings", sbr_name, context.namespace.name) is not None, f"Service Binding '{sbr_name}' does not exist in namespace '{context.namespace.name}'"
-    result = openshift.get_resource_info_by_jsonpath("sbr", sbr_name, context.namespace.name, json_path, wait=True, timeout=600)
+    result = openshift.get_resource_info_by_jsonpath("sbr", sbr_name, context.namespace.name, json_path)
     assert result is not None, f"Invalid result for SBO jsonpath: {result}."
     assert re.fullmatch(json_value_regex, result) is not None, f"SBO jsonpath result \"{result}\" does not match \"{json_value_regex}\""
 
@@ -331,7 +332,7 @@ def envFrom_contains_intermediate_secret_name(context, intermediate_secret_name)
 @given(u'OLM Operator "{backend_service}" is running')
 def operator_manifest_installed(context, backend_service):
     openshift = Openshift()
-    _ = openshift.oc_apply_yaml_file(os.path.join(os.getcwd(), "test/acceptance/resources/", backend_service + ".operator.manifest.yaml"))
+    _ = openshift.apply_yaml_file(os.path.join(os.getcwd(), "test/acceptance/resources/", backend_service + ".operator.manifest.yaml"))
 
 
 @parse.with_pattern(r'.*')
@@ -374,7 +375,7 @@ def apply_yaml(context):
     openshift = Openshift()
     yaml = context.text
     metadata_name = re.sub(r'.*: ', '', re.search(r'name: .*', yaml).group(0))
-    output = openshift.oc_apply(yaml)
+    output = openshift.apply(yaml)
     result = re.search(rf'.*{metadata_name}.*(created|unchanged|configured)', output)
     assert result is not None, f"Unable to apply YAML for CR '{metadata_name}': {output}"
 
@@ -466,3 +467,8 @@ def validate_secret_empty(context, secret_name):
                       ignore_exceptions=(json.JSONDecodeError,))
     except polling2.TimeoutException:
         pass
+
+
+@step(u'"{cli}" CLI is used')
+def cli_is_used(context, cli):
+    ctx.set_cli = cli

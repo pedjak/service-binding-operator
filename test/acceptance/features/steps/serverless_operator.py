@@ -5,7 +5,7 @@ from command import Command
 from openshift import Openshift
 
 
-class ServerlessOperator():
+class ServerlessOperator(object):
 
     openshift = Openshift()
     cmd = Command()

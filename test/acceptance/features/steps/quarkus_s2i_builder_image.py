@@ -1,3 +1,4 @@
+from environment import ctx
 from command import Command
 import re
 from openshift import Openshift
@@ -25,7 +26,7 @@ class QuarkusS2IBuilderImage(object):
 
     def get_name(self):
         output, exit_code = self.cmd.run(
-            f'oc get is {self.image} -n {self.namespace} -o json | jq -rc \'.spec.tags[] | select(.annotations.tags == "builder").from.name\'')
+            f'{ctx.cli} get is {self.image} -n {self.namespace} -o json | jq -rc \'.spec.tags[] | select(.annotations.tags == "builder").from.name\'')
         if self.image in output:
             if re.search("not found", output):
                 return None
@@ -34,7 +35,7 @@ class QuarkusS2IBuilderImage(object):
         return None
 
     def import_and_patch(self):
-        cmd_import = f"oc import-image quay.io/quarkus/{self.image}:{self.tag} -n {self.namespace} --confirm"
+        cmd_import = f"{ctx.cli} import-image quay.io/quarkus/{self.image}:{self.tag} -n {self.namespace} --confirm"
         print(f'===> Import CMD: {cmd_import}')
         (import_output, exit_code) = self.cmd.run(cmd_import)
         if exit_code != 0:
@@ -42,7 +43,7 @@ class QuarkusS2IBuilderImage(object):
         if re.search(f'.*{self.image}\\simported', import_output) is None:
             return False
         spec = '{"spec": {"tags": [{"name" : \"%s\", "annotations": {"tags": "builder"}}]}}' % self.tag
-        cmd_patch = f'oc patch is {self.image} -n {self.namespace} -p \'{spec}\''
+        cmd_patch = f'{ctx.cli} patch is {self.image} -n {self.namespace} -p \'{spec}\''
         print(f'===> Patch CMD: {cmd_patch}')
         (patch_output, exit_code) = self.cmd.run(cmd_patch)
         if exit_code != 0:

@@ -1,3 +1,4 @@
+from environment import ctx
 from openshift import Openshift
 from command import Command
 import re
@@ -43,7 +44,8 @@ class NodeJSApp(object):
             return False
 
     def install(self):
-        create_new_app_output, exit_code = self.cmd.run(f"oc new-app --docker-image={self.nodejs_app_image} --name={self.name} -n {self.namespace}")
+        create_new_app_output, exit_code = self.cmd.run(
+            f"{ctx.cli} new-app --docker-image={self.nodejs_app_image} --name={self.name} -n {self.namespace}")
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app: {create_new_app_output}"
         assert re.search(f'imagestream.image.openshift.io.*{self.name}.*created',
                          create_new_app_output) is not None, f"Unable to create imagestream: {create_new_app_output}"
@@ -78,7 +80,7 @@ class NodeJSApp(object):
         start = 0
         while ((start + interval) <= timeout):
             pod_list = self.openshift.get_pod_lst(self.namespace)
-            for pod in pod_list.split(" "):
+            for pod in pod_list:
                 if re.fullmatch(self.get_pod_name_pattern(), pod) is not None:
                     if self.openshift.get_pod_status(pod, self.namespace) == "Running":
                         return pod
@@ -90,7 +92,7 @@ class NodeJSApp(object):
         start = 0
         while ((start + interval) <= timeout):
             pod_list = self.openshift.get_pod_lst(self.namespace)
-            for pod in pod_list.split(" "):
+            for pod in pod_list:
                 if pod != old_pod_name and re.fullmatch(self.get_pod_name_pattern(), pod) is not None:
                     if self.openshift.get_pod_status(pod, self.namespace) == "Running":
                         return pod
@@ -106,7 +108,7 @@ class NodeJSApp(object):
         while ((start + interval) <= timeout):
             current_generation = self.get_generation()
             pod_list = self.openshift.get_pod_lst(self.namespace)
-            for pod in pod_list.split(" "):
+            for pod in pod_list:
                 if (current_generation > old_generation) and (re.fullmatch(self.get_pod_name_pattern(), pod) is not None):
                     if self.openshift.get_pod_status(pod, self.namespace) == "Running":
                         return pod

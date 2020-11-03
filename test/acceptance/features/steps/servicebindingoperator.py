@@ -3,7 +3,7 @@ import os
 from openshift import Openshift
 
 
-class Servicebindingoperator():
+class Servicebindingoperator(object):
     openshift = Openshift()
     name = ""
     namespace = ""

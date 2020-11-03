@@ -13,6 +13,7 @@ before_all(context), after_all(context)
 """
 
 from steps.command import Command
+from steps.environment import ctx
 
 import os
 
@@ -20,11 +21,14 @@ cmd = Command()
 
 
 def before_all(_context):
-    output, code = cmd.run("oc version | grep Client")
-    assert code == 0, f"Checking oc version failed: {output}"
+    ctx.set_cli(os.getenv("TEST_ACCEPTANCE_CLI", "oc"))
 
-    oc_ver = output.split()[2]
-    assert oc_ver >= "4.5", f"oc version is required 4.5+, but is {oc_ver}."
+    if ctx.get_cli() == "oc":
+        output, code = cmd.run("oc version | grep Client")
+        assert code == 0, f"Checking oc version failed: {output}"
+
+        oc_ver = output.split()[2]
+        assert oc_ver >= "4.5", f"oc version is required 4.5+, but is {oc_ver}."
 
     start_sbo = os.getenv("TEST_ACCEPTANCE_START_SBO")
     assert start_sbo is not None, "TEST_ACCEPTANCE_START_SBO is not set. It should be one of local, remote or operator-hub"

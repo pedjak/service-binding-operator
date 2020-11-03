@@ -1,6 +1,7 @@
 import re
 import time
 import base64
+from environment import ctx
 from command import Command
 
 
@@ -89,13 +90,12 @@ spec:
         return self.get_resource_lst("pods", namespace)
 
     def get_resource_lst(self, resource_plural, namespace):
-        output, exit_code = self.cmd.run(f'oc get {resource_plural} -n {namespace} -o "jsonpath={{.items[*].metadata.name}}"')
+        output, exit_code = self.cmd.run(f'{ctx.cli} get {resource_plural} -n {namespace} -o "jsonpath={{.items[*].metadata.name}}"')
         assert exit_code == 0, f"Getting resource list failed as the exit code is not 0 with output - {output}"
-        return output
+        return output.split(" ")
 
     def search_item_in_lst(self, lst, search_pattern):
-        lst_arr = lst.split(" ")
-        for item in lst_arr:
+        for item in lst:
             if re.fullmatch(search_pattern, item) is not None:
                 print(f"item matched {item}")
                 return item
@@ -116,7 +116,7 @@ spec:
             return None
 
     def is_resource_in(self, resource_type):
-        output, exit_code = self.cmd.run(f'oc get {resource_type}')
+        output, exit_code = self.cmd.run(f'{ctx.cli} get {resource_type}')
         return exit_code == 0
 
     def wait_for_pod(self, pod_name_pattern, namespace, interval=5, timeout=60):
@@ -134,29 +134,29 @@ spec:
         return None
 
     def check_pod_status(self, pod_name, namespace, wait_for_status="Running"):
-        cmd = f'oc get pod {pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
+        cmd = f'{ctx.cli} get pod {pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
         status_found, output, exit_status = self.cmd.run_wait_for_status(cmd, wait_for_status)
         return status_found
 
     def get_pod_status(self, pod_name, namespace):
-        cmd = f'oc get pod {pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
+        cmd = f'{ctx.cli} get pod {pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
         output, exit_status = self.cmd.run(cmd)
         print(f"Get pod status: {output}, {exit_status}")
         if exit_status == 0:
             return output
         return None
 
-    def oc_apply(self, yaml):
-        (output, exit_code) = self.cmd.run("oc apply -f -", yaml)
+    def apply(self, yaml):
+        (output, exit_code) = self.cmd.run(f"{ctx.cli} apply -f -", yaml)
         print(output)
         return output
 
     def create_catalog_source(self, name, catalog_image):
         catalog_source = self.catalog_source_yaml_template.format(name=name, catalog_image=catalog_image)
-        return self.oc_apply(catalog_source)
+        return self.apply(catalog_source)
 
     def get_current_csv(self, package_name, catalog, channel):
-        cmd = f'oc get packagemanifests -o json | jq -r \'.items[] \
+        cmd = f'{ctx.cli} get packagemanifests -o json | jq -r \'.items[] \
             | select(.metadata.name=="{package_name}") \
             | select(.status.catalogSource=="{catalog}").status.channels[] \
             | select(.name=="{channel}").currentCSV\''
@@ -182,16 +182,16 @@ spec:
         return False
 
     def expose_service_route(self, service_name, namespace):
-        output, exit_code = self.cmd.run(f'oc expose svc/{service_name} -n {namespace} --name={service_name}')
+        output, exit_code = self.cmd.run(f'{ctx.cli} expose svc/{service_name} -n {namespace} --name={service_name}')
         return re.search(r'.*%s\sexposed' % service_name, output)
 
     def get_route_host(self, name, namespace):
-        output, exit_code = self.cmd.run(f'oc get route {name} -n {namespace} -o "jsonpath={{.status.ingress[0].host}}"')
+        output, exit_code = self.cmd.run(f'{ctx.cli} get route {name} -n {namespace} -o "jsonpath={{.status.ingress[0].host}}"')
         assert exit_code == 0, f"Getting route host failed as the exit code is not 0 with output - {output}"
         return output
 
     def get_deployment_status(self, deployment_name, namespace, wait_for_status=None, interval=5, timeout=400):
-        deployment_status_cmd = f'oc get deployment {deployment_name} -n {namespace} -o json' \
+        deployment_status_cmd = f'{ctx.cli} get deployment {deployment_name} -n {namespace} -o json' \
             + ' | jq -rc \'.status.conditions[] | select(.type=="Available").status\''
         output = None
         exit_code = -1
@@ -206,19 +206,19 @@ spec:
         return output
 
     def get_deployment_env_info(self, name, namespace):
-        env_cmd = f'oc get deploy {name} -n {namespace} -o "jsonpath={{.spec.template.spec.containers[0].env}}"'
+        env_cmd = f'{ctx.cli} get deploy {name} -n {namespace} -o "jsonpath={{.spec.template.spec.containers[0].env}}"'
         env, exit_code = self.cmd.run(env_cmd)
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned while getting deployment's env: {env}"
         return env
 
     def get_deployment_envFrom_info(self, name, namespace):
-        env_from_cmd = f'oc get deploy {name} -n {namespace} -o "jsonpath={{.spec.template.spec.containers[0].envFrom}}"'
+        env_from_cmd = f'{ctx.cli} get deploy {name} -n {namespace} -o "jsonpath={{.spec.template.spec.containers[0].envFrom}}"'
         env_from, exit_code = self.cmd.run(env_from_cmd)
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned while getting deployment's envFrom: {env_from}"
         return env_from
 
     def get_resource_info_by_jsonpath(self, resource_type, name, namespace, json_path):
-        oc_cmd = f'oc get {resource_type} {name} -n {namespace} -o "jsonpath={json_path}"'
+        oc_cmd = f'{ctx.cli} get {resource_type} {name} -n {namespace} -o "jsonpath={json_path}"'
         output, exit_code = self.cmd.run(oc_cmd)
         if exit_code == 0:
             if resource_type == "secrets":
@@ -230,15 +230,15 @@ spec:
             return None
 
     def get_resource_info_by_jq(self, resource_type, name, namespace, jq_expression, wait=False, interval=5, timeout=120):
-        output, exit_code = self.cmd.run(f'oc get {resource_type} {name} -n {namespace} -o json | jq  \'{jq_expression}\'')
+        output, exit_code = self.cmd.run(f'{ctx.cli} get {resource_type} {name} -n {namespace} -o json | jq  \'{jq_expression}\'')
         return output
 
     def create_image_stream(self, name, registry_namespace):
         image_stream = self.image_stream_template.format(name=name, namespace=registry_namespace)
-        return self.oc_apply(image_stream)
+        return self.apply(image_stream)
 
     def get_docker_image_repository(self, name, namespace):
-        cmd = f'oc get is {name} -n {namespace} -o "jsonpath={{.status.dockerImageRepository}}"'
+        cmd = f'{ctx.cli} get is {name} -n {namespace} -o "jsonpath={{.status.dockerImageRepository}}"'
         (output, exit_code) = self.cmd.run(cmd)
         assert exit_code == 0, f"cmd-{cmd} result for getting docker image repository is {output} with exit code-{exit_code} not equal to 0"
         return output
@@ -246,14 +246,14 @@ spec:
     def create_build_config(self, name, namespace, application_source, image_name_with_tag):
         build_config_yaml = self.build_config_template.format(
             name=name, namespace=namespace, application_source=application_source, image_name_with_tag=image_name_with_tag)
-        return self.oc_apply(build_config_yaml)
+        return self.apply(build_config_yaml)
 
     def create_knative_service(self, name, namespace, image):
         knative_service_yaml = self.service_template.format(name=name, namespace=namespace, image_repository=image)
-        return self.oc_apply(knative_service_yaml)
+        return self.apply(knative_service_yaml)
 
     def wait_for_build_pod_status(self, build_pod_name, namespace, wait_for_status="Succeeded", timeout=780):
-        cmd = f'oc get pod {build_pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
+        cmd = f'{ctx.cli} get pod {build_pod_name} -n {namespace} -o "jsonpath={{.status.phase}}"'
         status_found, output, exit_status = self.cmd.run_wait_for_status(cmd, wait_for_status, timeout=timeout)
         return status_found, output
 
@@ -271,7 +271,7 @@ spec:
             return self.search_resource_in_namespace("deployment", deployment_name_pattern, namespace)
 
     def get_knative_route_host(self, name, namespace):
-        cmd = f'oc get rt {name} -n {namespace} -o "jsonpath={{.status.url}}"'
+        cmd = f'{ctx.cli} get rt {name} -n {namespace} -o "jsonpath={{.status.url}}"'
         output, exit_code = self.cmd.run(cmd)
         assert exit_code == 0, f"cmd-{cmd} result for getting knative route is {output} with exit code not equal to 0"
         return output
@@ -280,7 +280,7 @@ spec:
         return self.get_resource_lst("rev", namespace)
 
     def get_last_revision_status(self, revision, namespace):
-        cmd = f'oc get rev {revision} -n {namespace} -o "jsonpath={{.status.conditions[*].status}}"'
+        cmd = f'{ctx.cli} get rev {revision} -n {namespace} -o "jsonpath={{.status.conditions[*].status}}"'
         (output, exit_code) = self.cmd.run(cmd)
         assert exit_code == 0, f"cmd-{cmd} for getting last revision status is {output} with exit code not equal to 0"
         last_revision_status = output.split(" ")[-1]
@@ -290,7 +290,7 @@ spec:
         operator_subscription = self.operator_subscription_to_namespace_yaml_template.format(
             name=package_name, namespace=namespace, operator_source_name=operator_source_name,
             channel=channel, csv_version=self.get_current_csv(package_name, operator_source_name, channel))
-        return self.oc_apply(operator_subscription)
+        return self.apply(operator_subscription)
 
     def create_operator_subscription(self, package_name, operator_source_name, channel):
         return self.create_operator_subscription_to_namespace(package_name, "openshift-operators", operator_source_name, channel)
@@ -303,7 +303,7 @@ spec:
             return self.get_all_matched_pattern_from_lst(lst, name_pattern)
         else:
             print('Resource list is empty under namespace - {}'.format(namespace))
-            return None
+            return []
 
     def get_all_matched_pattern_from_lst(self, lst, search_pattern):
         lst_arr = lst.split(" ")
@@ -314,7 +314,7 @@ spec:
                 output_arr.append(item)
         if not output_arr:
             print("Given item not matched from the list of pods")
-            return None
+            return []
         else:
             return output_arr
 
@@ -327,8 +327,8 @@ spec:
         print('Resource list is empty under namespace - {}'.format(namespace))
         return None
 
-    def oc_apply_yaml_file(self, yaml):
-        (output, exit_code) = self.cmd.run("oc apply -f " + yaml)
+    def apply_yaml_file(self, yaml):
+        (output, exit_code) = self.cmd.run(f"{ctx.cli} apply -f " + yaml)
         assert exit_code == 0, "Applying yaml file failed as the exit code is not 0"
         return output
 
@@ -360,7 +360,7 @@ spec:
                 time.sleep(interval)
                 start += interval
         else:
-            deployment_list = self.get_deployment_names_of_given_pattern(deployment_name_pattern)
+            deployment_list = self.get_deployment_names_of_given_pattern(deployment_name_pattern, namespace)
             if deployment_list is not None:
                 for deployment in deployment_list:
                     result = self.get_deployment_envFrom_info(deployment, namespace)
@@ -375,6 +375,6 @@ spec:
         return None
 
     def delete_service_binding(self, sb_name):
-        (output, exit_code) = self.cmd.run("oc delete --wait=true --timeout=120s ServiceBinding " + sb_name)
+        (output, exit_code) = self.cmd.run(f"{ctx.cli} delete --wait=true --timeout=120s ServiceBinding " + sb_name)
         assert exit_code == 0, f"Unexpected exit code ({exit_code}) while deleting service binding '{sb_name}': {output}"
         return output

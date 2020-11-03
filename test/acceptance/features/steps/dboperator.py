@@ -4,7 +4,7 @@ from command import Command
 from openshift import Openshift
 
 
-class DbOperator():
+class DbOperator(object):
 
     openshift = Openshift()
     cmd = Command()
@@ -47,11 +47,3 @@ class DbOperator():
             print("Failed to create {} operator subscription".format(self.package_name))
             return False
         return True
-
-    def get_package_manifest(self):
-        cmd = f'oc get packagemanifest {self.pkgManifest} -o "jsonpath={{.metadata.name}}"'
-        manifest = self.cmd.run_check_for_status(
-            cmd, status=self.pkgManifest)
-        assert manifest is not None, f"Unable to find packagemanifest '{self.pkgManifest}': {manifest}"
-        assert manifest == self.pkgManifest, f"Unexpected packagemanifest found: '{manifest}'. Expected: '{self.pkgManifest}'"
-        return manifest
