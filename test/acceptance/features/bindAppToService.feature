@@ -1,3 +1,4 @@
+@olm
 Feature: Bind an application to a service
 
     As a user of Service Binding Operator
@@ -637,7 +638,7 @@ Feature: Bind an application to a service
                 name: binding-request-empty-spec
             spec:
             """
-        Then Error message "invalid: spec: Invalid value: \"null\"" is thrown
+        Then Error message is thrown
         And Service Binding "binding-request-empty-spec" is not persistent in the cluster
 
     @negative
@@ -663,7 +664,7 @@ Feature: Bind an application to a service
                 name: binding-request-emptying-spec
             spec:
             """
-        Then Error message "spec: Required value" is thrown
+        Then Error message is thrown
         And Service Binding "binding-request-emptying-spec" is not updated
 
     @negative
