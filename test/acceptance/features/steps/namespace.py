@@ -10,7 +10,7 @@ class Namespace(object):
         self.cmd = Command()
 
     def create(self):
-        create_namespace_output, exit_code = self.cmd.run(f"{ctx.cli} new-project {self.name}")
+        create_namespace_output, exit_code = self.cmd.run(f"{ctx.cli} create namespace {self.name}")
         if re.search(r'Now using project \"%s\"\son\sserver' % self.name, create_namespace_output) is not None or \
                 re.search(r'.*Already\son\sproject\s\"%s\"\son\sserver.*' % self.name, create_namespace_output) is not None:
             return True
