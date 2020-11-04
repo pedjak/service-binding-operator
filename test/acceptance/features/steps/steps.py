@@ -192,7 +192,11 @@ def sbr_is_applied(context):
             context.application_original_generation = context.application.get_generation()
         else:
             assert False, f"Invalid application type in context.application_type={context.application_type}, valid are 'nodejs', 'knative'"
-    assert sbr.create(sbr_yaml) is not None, "Service binding not created"
+    if "namespace" in context:
+        ns = context.namespace.name
+    else:
+        ns = None
+    assert sbr.create(sbr_yaml, ns) is not None, "Service binding not created"
 
 
 # STEP
@@ -375,7 +379,11 @@ def apply_yaml(context):
     openshift = Openshift()
     yaml = context.text
     metadata_name = re.sub(r'.*: ', '', re.search(r'name: .*', yaml).group(0))
-    output = openshift.apply(yaml)
+    if "namespace" in context:
+        ns = context.namespace.name
+    else:
+        ns = None
+    output = openshift.apply(yaml, ns)
     result = re.search(rf'.*{metadata_name}.*(created|unchanged|configured)', output)
     assert result is not None, f"Unable to apply YAML for CR '{metadata_name}': {output}"
 

@@ -6,11 +6,11 @@ class ServiceBinding(object):
 
     openshift = Openshift()
 
-    def create(self, yaml):
-        return re.search(r'.*servicebinding.operators.coreos.com/.*(created|unchanged)', self.attempt_to_create(yaml))
+    def create(self, yaml, namespace=None):
+        return re.search(r'.*servicebinding.operators.coreos.com/.*(created|unchanged)', self.attempt_to_create(yaml, namespace))
 
-    def attempt_to_create(self, yaml):
-        return self.openshift.apply(yaml)
+    def attempt_to_create(self, yaml, namespace=None):
+        return self.openshift.apply(yaml, namespace)
 
     def get_servicebinding_info_by_jsonpath(self, servicebinding_name, namespace, json_path):
         openshift = Openshift()

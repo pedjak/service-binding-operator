@@ -146,9 +146,13 @@ spec:
             return output
         return None
 
-    def apply(self, yaml):
-        (output, exit_code) = self.cmd.run(f"{ctx.cli} apply -f -", yaml)
-        print(output)
+    def apply(self, yaml, namespace=None):
+        if namespace is not None:
+            ns_arg = f"-n {namespace}"
+        else:
+            ns_arg = ""
+        (output, exit_code) = self.cmd.run(f"{ctx.cli} apply {ns_arg} -f -", yaml)
+        assert exit_code == 0, f"Non-zero exit code ({exit_code}) while applying a YAML: {output}"
         return output
 
     def create_catalog_source(self, name, catalog_image):
