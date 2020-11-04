@@ -45,5 +45,5 @@ def before_all(_context):
 
 
 def before_scenario(_context, _scenario):
-    output, code = cmd.run('kubectl get project default -o jsonpath="{.metadata.name}"')
+    output, code = cmd.run(f'{ctx.cli} get ns default -o jsonpath="{{.metadata.name}}"')
     assert code == 0, f"Checking connection to OS cluster by getting the 'default' project failed: {output}"

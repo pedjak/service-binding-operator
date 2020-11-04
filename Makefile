@@ -163,6 +163,7 @@ TEST_ACCEPTANCE_OUTPUT_DIR ?= $(OUTPUT_DIR)/acceptance-tests
 TEST_ACCEPTANCE_ARTIFACTS ?= /tmp/artifacts
 
 TEST_ACCEPTANCE_TAGS ?=
+TEST_ACCEPTANCE_CLI ?= oc
 
 ifdef TEST_ACCEPTANCE_TAGS
 TEST_ACCEPTANCE_TAGS_ARG := --tags="~@disabled" --tags="$(TEST_ACCEPTANCE_TAGS)"
@@ -273,7 +274,9 @@ endif
 
 .PHONY: set-test-namespace
 set-test-namespace: get-test-namespace
+ifeq ($(TEST_ACCEPTANCE_CLI), oc)
 	$(Q)oc project $(TEST_NAMESPACE)
+endif
 
 .PHONY: test-acceptance
 ## Runs acceptance tests
@@ -377,9 +380,9 @@ local: deploy-clean deploy-rbac deploy-crds
 .PHONY: deploy-rbac
 ## Deploy-RBAC: Setup service account and deploy RBAC
 deploy-rbac:
-	$(Q)kubectl create -f deploy/service_account.yaml
-	$(Q)kubectl create -f deploy/role.yaml
-	$(Q)kubectl create -f deploy/role_binding.yaml
+	$(Q)kubectl apply -f deploy/service_account.yaml
+	$(Q)kubectl apply -f deploy/role.yaml
+	$(Q)kubectl apply -f deploy/role_binding.yaml
 
 .PHONY: deploy-crds
 ## Deploy-CRD: Deploy CRD
