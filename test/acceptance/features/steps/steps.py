@@ -284,7 +284,6 @@ def given_knative_serving_is_running(context):
     """
     knative_namespace = Namespace("knative-serving")
     assert knative_namespace.create() is True, "Knative serving namespace not created"
-    assert Namespace(context.namespace.name).switch_to() is True, "Unable to switch to the context namespace"
     knative_serving = KnativeServing(namespace=knative_namespace.name)
     if not knative_serving.is_present():
         print("knative serving is not present, create knative serving")

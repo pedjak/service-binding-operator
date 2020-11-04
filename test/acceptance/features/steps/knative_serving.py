@@ -33,7 +33,7 @@ metadata:
 
     def create(self):
         serving_output = self.openshift.apply(self.knative_serving_yaml_template.format(name=self.name, namespace=self.namespace))
-        pattern = f'knativeserving.(serving|operator).knative.dev/{self.namespace}\\screated'
+        pattern = f'knativeserving.(serving|operator).knative.dev/{self.name}\\screated'
         if re.search(pattern, serving_output):
             return True
         print(f"Pattern {pattern} did not match as creating knative serving yaml output is {serving_output}")
