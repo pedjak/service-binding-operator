@@ -8,7 +8,7 @@ Feature: Bind an application to a service using annotations
     Background:
         Given Namespace [TEST_NAMESPACE] is used
         * Service Binding Operator is running
-
+    @k8s
     Scenario: Provide binding info through backing service CRD annotation
         Given The Custom Resource Definition is present
             """
@@ -330,6 +330,7 @@ Feature: Bind an application to a service using annotations
         And The application env var "BACKEND_WEBARROWS_SECONDARY" has value "secondary.example.com"
         And The application env var "BACKEND_WEBARROWS_404" has value "black-hole.example.com"
 
+    @k8s
     Scenario: Backend Service metadata annotations update for service bindings gets propagated to the binding secret
         Given OLM Operator "backend" is running
         * The Custom Resource is present
@@ -384,6 +385,7 @@ Feature: Bind an application to a service using annotations
 
 
     @negative
+    @k8s
     Scenario: Backend Service metadata annotations update not specific to service bindings does not get propagated to the binding secret
         Given OLM Operator "backend" is running
         * The Custom Resource is present
