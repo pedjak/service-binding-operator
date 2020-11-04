@@ -155,6 +155,14 @@ spec:
         assert exit_code == 0, f"Non-zero exit code ({exit_code}) while applying a YAML: {output}"
         return output
 
+    def apply_invalid(self, yaml, namespace=None):
+        if namespace is not None:
+            ns_arg = f"-n {namespace}"
+        else:
+            ns_arg = ""
+        (output, _) = self.cmd.run(f"{ctx.cli} apply {ns_arg} -f -", yaml)
+        return output
+
     def create_catalog_source(self, name, catalog_image):
         catalog_source = self.catalog_source_yaml_template.format(name=name, catalog_image=catalog_image)
         return self.apply(catalog_source)

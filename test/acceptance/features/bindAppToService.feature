@@ -692,14 +692,8 @@ Feature: Bind an application to a service
         And Service Binding "binding-request-remove-spec" is not updated
 
     Scenario: Bind an application to a service present in a different namespace
-        Given Namespace is present
-            """
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-                name: backend-services
-            """
-        * OLM Operator "backend" is running
+        Given OLM Operator "backend" is running
+        * Namespace "backend-services" is used
         * The Custom Resource is present
             """
             apiVersion: stable.example.com/v1
@@ -712,6 +706,7 @@ Feature: Bind an application to a service
             spec:
                 host_cross_ns_service: cross.ns.service.stable.example.com
             """
+        * Namespace [TEST_NAMESPACE] is used
         * Generic test application "myapp-in-sbr-ns" is running
         When Service Binding is applied
             """

@@ -433,7 +433,7 @@ def invalid_sbr_is_applied(context):
         json_path = "{.metadata.resourceVersion}"
         rv = sbr.get_servicebinding_info_by_jsonpath(context.sbr_name, context.namespace.name, json_path)
         context.resource_version = rv
-    context.expected_error = sbr.attempt_to_create(context.text)
+    context.expected_error = sbr.attempt_to_create_invalid(context.text, context.namespace.name)
 
 
 @then(u'Error message "{err_msg}" is thrown')
