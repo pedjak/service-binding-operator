@@ -318,9 +318,8 @@ spec:
             return []
 
     def get_all_matched_pattern_from_lst(self, lst, search_pattern):
-        lst_arr = lst.split(" ")
         output_arr = []
-        for item in lst_arr:
+        for item in lst:
             if re.fullmatch(search_pattern, item) is not None:
                 print(f"item matched {item}")
                 output_arr.append(item)
