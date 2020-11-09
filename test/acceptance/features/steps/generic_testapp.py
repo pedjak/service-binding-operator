@@ -8,7 +8,7 @@ from behave import given, step
 class GenericTestApp(App):
 
     def __init__(self, name, namespace, app_image="quay.io/redhat-developer/sbo-generic-test-app:20200923"):
-        App.__init__(self, name, namespace, app_image)
+        App.__init__(self, name, namespace, app_image, "8080")
 
     def get_env_var_value(self, name):
         resp = polling2.poll(lambda: requests.get(url=f"http://{self.route_url}/env/{name}"),

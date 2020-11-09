@@ -1,6 +1,7 @@
 import re
 import time
 import base64
+import json
 from environment import ctx
 from command import Command
 
@@ -193,14 +194,34 @@ spec:
                 start += interval
         return False
 
-    def expose_service_route(self, service_name, namespace):
-        output, exit_code = self.cmd.run(f'{ctx.cli} expose svc/{service_name} -n {namespace} --name={service_name}')
-        return re.search(r'.*%s\sexposed' % service_name, output)
+    def expose_service_route(self, name, namespace, port=""):
+        if ctx.cli == "oc":
+            output, exit_code = self.cmd.run(f'{ctx.cli} expose svc/{name} -n {namespace} --name={name}')
+        else:
+            output, exit_code = self.cmd.run(f'{ctx.cli} expose deployment {name} -n {namespace} --port={port} --type=NodePort')
+        assert exit_code ==0, f"Could not expose deployment: {output}"
 
     def get_route_host(self, name, namespace):
-        output, exit_code = self.cmd.run(f'{ctx.cli} get route {name} -n {namespace} -o "jsonpath={{.status.ingress[0].host}}"')
+        if ctx.cli == "oc":
+            output, exit_code = self.cmd.run(f'{ctx.cli} get route {name} -n {namespace} -o "jsonpath={{.status.ingress[0].host}}"')
+            host = output
+        else:
+            addr = self.get_node_address()
+            output, exit_code = self.cmd.run(f'{ctx.cli} get service {name} -n {namespace} -o "jsonpath={{.spec.ports[0].nodePort}}"')
+            host = f"{addr}:{output}"
+
         assert exit_code == 0, f"Getting route host failed as the exit code is not 0 with output - {output}"
-        return output
+
+        return host
+
+    def get_node_address(self):
+        output, exit_code = self.cmd.run(f'{ctx.cli} get nodes -o "jsonpath={{.items[0].status.addresses}}"')
+        assert exit_code == 0, f"Error accessing Node resources - {output}"
+        addresses = json.loads(output)
+        for addr in addresses:
+            if addr['type'] in ["InternalIP", "ExternalIP"]:
+                return addr['address']
+        assert False, f"No IP addresses found in {output}"
 
     def get_deployment_status(self, deployment_name, namespace, wait_for_status=None, interval=5, timeout=400):
         deployment_status_cmd = f'{ctx.cli} get deployment {deployment_name} -n {namespace} -o json' \
@@ -393,3 +414,11 @@ spec:
         (output, exit_code) = self.cmd.run(f"{ctx.cli} delete --wait=true --timeout=120s ServiceBinding " + sb_name)
         assert exit_code == 0, f"Unexpected exit code ({exit_code}) while deleting service binding '{sb_name}': {output}"
         return output
+
+    def new_app(self, name, image_name, namespace):
+        if ctx.cli == "oc":
+            cmd = f"{ctx.cli} new-app --docker-image={image_name} --name={name} -n {namespace}"
+        else:
+            cmd = f"{ctx.cli} create deployment {name} -n {namespace} --image={image_name}"
+        (output, exit_code) = self.cmd.run(cmd)
+        assert exit_code == 0, f"Non-zero exit code ({exit_code}) returned when attempting to create a new app using following command line {cmd}\n: {output}"
