@@ -9,12 +9,14 @@ from command import Command
 class Openshift(object):
     def __init__(self):
         self.cmd = Command()
+        self.olm_namespace = "olm" if ctx.cli == "kubectl" else "openshift-marketplace"
+        self.operators_namespace = "operators" if ctx.cli == "kubectl" else "openshift-operators"
         self.catalog_source_yaml_template = '''
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
     name: {name}
-    namespace: openshift-marketplace
+    namespace: {olm_namespace}
 spec:
     sourceType: grpc
     image: {catalog_image}
@@ -83,7 +85,7 @@ spec:
   installPlanApproval: Automatic
   name: '{name}'
   source: '{operator_source_name}'
-  sourceNamespace: openshift-marketplace
+  sourceNamespace: {olm_namespace}
   startingCSV: '{csv_version}'
 '''
 
@@ -120,7 +122,7 @@ spec:
         output, exit_code = self.cmd.run(f'{ctx.cli} get {resource_type}')
         return exit_code == 0
 
-    def wait_for_pod(self, pod_name_pattern, namespace, interval=5, timeout=60):
+    def wait_for_pod(self, pod_name_pattern, namespace, interval=5, timeout=600):
         pod = self.search_pod_in_namespace(pod_name_pattern, namespace)
         start = 0
         if pod is not None:
@@ -161,11 +163,12 @@ spec:
             ns_arg = f"-n {namespace}"
         else:
             ns_arg = ""
-        (output, _) = self.cmd.run(f"{ctx.cli} apply {ns_arg} -f -", yaml)
+        (output, exit_code) = self.cmd.run(f"{ctx.cli} apply {ns_arg} -f -", yaml)
+        assert exit_code != 0, f"the command should fail but it did not, output: {output}"
         return output
 
     def create_catalog_source(self, name, catalog_image):
-        catalog_source = self.catalog_source_yaml_template.format(name=name, catalog_image=catalog_image)
+        catalog_source = self.catalog_source_yaml_template.format(name=name, catalog_image=catalog_image, olm_namespace=self.olm_namespace)
         return self.apply(catalog_source)
 
     def get_current_csv(self, package_name, catalog, channel):
@@ -321,12 +324,12 @@ spec:
 
     def create_operator_subscription_to_namespace(self, package_name, namespace, operator_source_name, channel):
         operator_subscription = self.operator_subscription_to_namespace_yaml_template.format(
-            name=package_name, namespace=namespace, operator_source_name=operator_source_name,
+            name=package_name, namespace=namespace, operator_source_name=operator_source_name, olm_namespace=self.olm_namespace,
             channel=channel, csv_version=self.get_current_csv(package_name, operator_source_name, channel))
         return self.apply(operator_subscription)
 
     def create_operator_subscription(self, package_name, operator_source_name, channel):
-        return self.create_operator_subscription_to_namespace(package_name, "openshift-operators", operator_source_name, channel)
+        return self.create_operator_subscription_to_namespace(package_name, self.operators_namespace, operator_source_name, channel)
 
     def get_resource_list_in_namespace(self, resource_plural, name_pattern, namespace):
         print(f"Searching for {resource_plural} that matches {name_pattern} in {namespace} namespace")
@@ -410,10 +413,9 @@ spec:
                 print(f"No deployment that matches {deployment_name_pattern} found.\n")
         return None
 
-    def delete_service_binding(self, sb_name):
-        (output, exit_code) = self.cmd.run(f"{ctx.cli} delete --wait=true --timeout=120s ServiceBinding " + sb_name)
+    def delete_service_binding(self, sb_name, namespace):
+        (output, exit_code) = self.cmd.run(f"{ctx.cli} delete --wait=true --timeout=120s ServiceBinding {sb_name} -n {namespace}")
         assert exit_code == 0, f"Unexpected exit code ({exit_code}) while deleting service binding '{sb_name}': {output}"
-        return output
 
     def new_app(self, name, image_name, namespace):
         if ctx.cli == "oc":

@@ -65,7 +65,6 @@ Feature: Bind an application to a service using annotations
         And Secret "binding-request-backend-a" contains "BACKEND_READY" key with value "true"
         And Secret "binding-request-backend-a" contains "BACKEND_HOST" key with value "example.common"
 
-    @wip
     Scenario: Each value in referred map from service resource gets injected into app as separate env variable
         Given Generic test application "rsa-2-service" is running
         And The Custom Resource Definition is present

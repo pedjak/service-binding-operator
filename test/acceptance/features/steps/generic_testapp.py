@@ -12,7 +12,7 @@ class GenericTestApp(App):
 
     def get_env_var_value(self, name):
         resp = polling2.poll(lambda: requests.get(url=f"http://{self.route_url}/env/{name}"),
-                             check_success=lambda r: r.status_code in [200, 404], step=5, timeout=400)
+                             check_success=lambda r: r.status_code in [200, 404], step=5, timeout=400, ignore_exceptions=(requests.exceptions.ConnectionError,))
         print(f'env endpoint response: {resp.text} code: {resp.status_code}')
         if resp.status_code == 200:
             return json.loads(resp.text)

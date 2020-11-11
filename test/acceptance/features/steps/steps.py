@@ -226,8 +226,7 @@ def then_app_is_connected_to_db(context, db_name):
 @when(u'Service binding "{sb_name}" is deleted')
 def service_binding_is_deleted(context, sb_name):
     openshift = Openshift()
-    result = openshift.delete_service_binding(sb_name)
-    assert result is not None, f"Unable to delete service binding '{sb_name}'"
+    openshift.delete_service_binding(sb_name, context.namespace.name)
 
 
 # STEP
@@ -435,10 +434,14 @@ def invalid_sbr_is_applied(context):
     context.expected_error = sbr.attempt_to_create_invalid(context.text, context.namespace.name)
 
 
+@then(u'Error message is thrown')
 @then(u'Error message "{err_msg}" is thrown')
-def validate_error(context, err_msg):
-    search = re.search(rf'.*{err_msg}.*', context.expected_error)
-    assert search is not None, f"Actual error: '{context.expected_error}', Expected error: '{err_msg}'"
+def validate_error(context, err_msg=None):
+    if err_msg is None:
+        assert context.expected_error is not None, f"No error message"
+    else:
+        search = re.search(rf'.*{err_msg}.*', context.expected_error)
+        assert search is not None, f"Actual error: '{context.expected_error}', Expected error: '{err_msg}'"
 
 
 @then(u'Service Binding "{sb_name}" is not persistent in the cluster')
