@@ -24,7 +24,7 @@ env:
     - MINIKUBE_HOME=$HOME
     - CHANGE_MINIKUBE_NONE_USER=true
     - KUBECONFIG=$HOME/.kube/config
-    - TEST_ACCEPTANCE_TAGS="~@openshift"
+    - TEST_ACCEPTANCE_TAGS="~@knative"
     - TEST_ACCEPTANCE_CLI="kubectl"
 
 service:
