@@ -31,7 +31,7 @@ jobs:
       script: echo "bla"
     - stage: acceptance-tests
       if: type = pull_request
-      script: echo "foo
+      script: echo "foo"
 #script:
 #  # Run merge-to-master-release
 #  - if [ "$TRAVIS_BRANCH" = "master" ]; then
