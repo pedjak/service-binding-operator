@@ -27,7 +27,7 @@ before_install:
 jobs:
   include:
     - stage: push-dev-image
-      if: branch = foo
+      if: branch = foo AND type = push
       script: echo "bla"
     - stage: acceptance-tests
       if: type = pull_request
