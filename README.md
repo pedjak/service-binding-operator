@@ -1,7 +1,5 @@
 
 
-
-
 # The Service Binding Operator
 ## Connecting Applications with Services on Kubernetes and OpenShift
 
