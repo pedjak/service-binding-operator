@@ -11,3 +11,14 @@ patches:
       - op: replace
         path: /metadata/name
         value: service-binding-operator
+      - op: replace
+        path: /spec/template/spec/serviceAccountName
+        value: service-binding-operator
+
+#  - target:
+#      kind: Deployment
+#      name: .*
+#      patch: |-
+#        - op: replace
+#          path: /spec/template/spec/serviceAccountName
+#          value: service-binding-operator
