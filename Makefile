@@ -132,9 +132,13 @@ install: manifests kustomize
 uninstall: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
+.PHONY: deploy-cert-manager
+deploy-cert-manager:
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.1.0/cert-manager.yaml
+
 .PHONY: deploy
 ## Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize image
+deploy: manifests kustomize image deploy-cert-manager
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMAGE_REF)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 

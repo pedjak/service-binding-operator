@@ -576,3 +576,33 @@ def update_binding_secret(context):
     output = openshift.apply(yaml.dump(secret_yaml), context.namespace.name)
     result = re.search(rf'.*{context.sb_secret}.*(created|unchanged|configured)', output)
     assert result is not None, f"Unable to apply YAML for binding secret '{context.sb_secret}': {output}"
+
+
+@given(u'The application "{app_name}" does not exist')
+def check_app_resource(context, app_name):
+    openshift = Openshift()
+    output = openshift.search_resource_in_namespace("deployments", app_name, context.namespace.name)
+    assert output is None, f"Application {app_name} is present in namespace '{context.namespace.name}'"
+
+
+@given(u'The service "{service_name}" does not exist')
+def check_service_resource(context, service_name):
+    openshift = Openshift()
+    output = openshift.search_resource_in_namespace("Backend", service_name, context.namespace.name)
+    assert output is None, f"Service {service_name} is present in namespace '{context.namespace.name}'"
+
+
+@then(u'Immutable Service Binding is unable to be applied')
+def sbr_webhook(context):
+    openshift = Openshift()
+    metadata = yaml.full_load(context.text)["metadata"]
+    metadata_name = metadata["name"]
+    if "namespace" in metadata:
+        ns = metadata["namespace"]
+    else:
+        if "namespace" in context:
+            ns = context.namespace.name
+        else:
+            ns = None
+    output, exit_code = openshift.apply_invalid(context.text, ns)
+    assert exit_code is 1, f"Unable to apply Yaml for CR"

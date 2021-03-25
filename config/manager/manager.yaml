@@ -22,7 +22,7 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
-      serviceAccountName: service-binding-operator
+      serviceAccountName: default
       containers:
       - command:
         - /manager
