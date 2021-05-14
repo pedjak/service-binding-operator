@@ -41,17 +41,30 @@ func (m *model) hasDataField() bool {
 }
 
 func newModel(annotationValue string) (*model, error) {
+
+	reObf := regexp.MustCompile(`{.*?}`)
+	obfuscatedValue := reObf.ReplaceAllStringFunc(annotationValue, func(s string) string {
+		return "{" + strings.Repeat("_", len(s)-2) + "}"
+	})
+
 	// re contains a regular expression to split the input string using '=' and ',' as separators
 	re := regexp.MustCompile("[=,]")
 
 	// split holds the tokens extracted from the input string
-	split := re.Split(annotationValue, -1)
+	obfuscatedSplit := re.Split(obfuscatedValue, -1)
 
 	// its length should be even, since from this point on is assumed a sequence of key and value
 	// pairs as model source
-	if len(split)%2 != 0 {
-		m := fmt.Sprintf("invalid input, odd number of tokens: %q", split)
+	if len(obfuscatedSplit)%2 != 0 {
+		m := fmt.Sprintf("invalid input, odd number of tokens: %q", obfuscatedSplit)
 		return nil, errors.New(m)
+	}
+
+	split := make([]string, len(obfuscatedSplit))
+	start := 0
+	for i, part := range obfuscatedSplit {
+		split[i] = annotationValue[start : start+len(part)]
+		start += len(part) + 1
 	}
 
 	// extract the tokens into a map, iterating a pair at a time and using the Nth element as key and
@@ -127,7 +140,19 @@ func newModel(annotationValue string) (*model, error) {
 		return nil, errors.New("sliceOfMaps elementType requires sourceKey and sourceValue to be present")
 	}
 
-	pathParts := strings.Split(path, ".")
+	reObf = regexp.MustCompile(`\[.*?\]`)
+	obfuscatedPath := reObf.ReplaceAllStringFunc(path, func(s string) string {
+		return "[" + strings.Repeat("_", len(s)-2) + "]"
+	})
+
+	obfPathParts := strings.Split(obfuscatedPath, ".")
+
+	pathParts := make([]string, len(obfPathParts))
+	start = 0
+	for i, part := range obfPathParts {
+		pathParts[i] = path[start : start+len(part)]
+		start += len(part) + 1
+	}
 
 	return &model{
 		path:        pathParts,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/redhat-developer/service-binding-operator/pkg/binding/nested"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -64,7 +65,7 @@ func (d *stringDefinition) getOutputName() string {
 func (d *stringDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *stringDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	val, ok, err := unstructured.NestedFieldCopy(u.Object, d.path...)
+	val, ok, err := nested.NestedFieldCopy(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
