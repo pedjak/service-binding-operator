@@ -2,8 +2,8 @@ package binding
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/redhat-developer/service-binding-operator/pkg/binding/nested"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -65,7 +65,7 @@ func (d *stringDefinition) getOutputName() string {
 func (d *stringDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *stringDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	val, ok, err := nested.NestedFieldCopy(u.Object, d.path...)
+	val, ok, err := nested.GetNested(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (d *stringDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
 	}
 
 	m := map[string]interface{}{
-		d.getOutputName(): fmt.Sprintf("%v", val),
+		d.getOutputName(): val,
 	}
 
 	return &value{v: m}, nil
@@ -97,7 +97,7 @@ func (d *stringFromDataFieldDefinition) Apply(u *unstructured.Unstructured) (Val
 		return nil, errors.New("kubeClient required for this functionality")
 	}
 
-	resourceName, ok, err := unstructured.NestedString(u.Object, d.path...)
+	resourceName, ok, err := nested.GetNested(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (d *mapFromDataFieldDefinition) Apply(u *unstructured.Unstructured) (Value,
 		return nil, errors.New("kubeClient required for this functionality")
 	}
 
-	resourceName, ok, err := unstructured.NestedString(u.Object, d.path...)
+	resourceName, ok, err := nested.GetNested(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
@@ -216,12 +216,18 @@ var _ Definition = (*stringOfMapDefinition)(nil)
 func (d *stringOfMapDefinition) GetPath() []string { return d.path }
 
 func (d *stringOfMapDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	val, ok, err := unstructured.NestedFieldNoCopy(u.Object, d.path...)
+	strval, ok, err := nested.GetNested(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		return nil, errors.New("not found")
+	}
+
+	var val interface{}
+	err = json.Unmarshal([]byte(strval), &val)
+	if err != nil {
+		return nil, err
 	}
 
 	outputName := d.outputName
@@ -247,12 +253,18 @@ var _ Definition = (*sliceOfMapsFromPathDefinition)(nil)
 func (d *sliceOfMapsFromPathDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *sliceOfMapsFromPathDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	val, ok, err := unstructured.NestedSlice(u.Object, d.path...)
+	strval, ok, err := nested.GetNested(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		return nil, errors.New("not found")
+	}
+
+	var val []interface{}
+	err = json.Unmarshal([]byte(strval), &val)
+	if err != nil {
+		return nil, err
 	}
 
 	v := make(map[string]interface{})
@@ -279,12 +291,18 @@ var _ Definition = (*sliceOfStringsFromPathDefinition)(nil)
 func (d *sliceOfStringsFromPathDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *sliceOfStringsFromPathDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	val, ok, err := unstructured.NestedSlice(u.Object, d.path...)
+	strval, ok, err := nested.GetNested(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
 		return nil, errors.New("not found")
+	}
+
+	var val []interface{}
+	err = json.Unmarshal([]byte(strval), &val)
+	if err != nil {
+		return nil, err
 	}
 
 	v := make([]interface{}, 0, len(val))
