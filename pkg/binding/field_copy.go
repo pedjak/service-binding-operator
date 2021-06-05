@@ -1,4 +1,4 @@
-package nested
+package binding
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 )
 
-func GetNested(obj map[string]interface{}, path_segments ...string) (string, bool, error) {
+func getValuesByJSONPath(obj map[string]interface{}, path_segments ...string) (string, bool, error) {
 	path := "{." + strings.Join(path_segments, ".") + "}"
 	j := jsonpath.New("")
 	err := j.Parse(path)

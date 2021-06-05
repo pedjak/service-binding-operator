@@ -1,4 +1,4 @@
-package nested
+package binding
 
 import (
 	"testing"
@@ -97,7 +97,7 @@ func TestNestedFieldCopy(t *testing.T) {
 		if err != nil {
 			t.Errorf("Error unmarshaling json input\n")
 		}
-		result, ok, err := GetNested(u.Object, test.Path...)
+		result, ok, err := getValuesByJSONPath(u.Object, test.Path...)
 		if ok != test.WantOK {
 			t.Errorf("Expecting ok %v, got %v\n", test.WantOK, ok)
 		}
