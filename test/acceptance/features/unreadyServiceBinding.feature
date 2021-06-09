@@ -64,6 +64,7 @@ Feature: Only Unready Service Binding Resources Can Be Changed
 
     Scenario: Allow modifying a Service Binding when it is not yet ready due to "Service Not Found"
         Given Generic test application "app3" is running
+        And The service "service2" does not exist
         And Service Binding is applied
             """
             apiVersion: binding.operators.coreos.com/v1alpha1
@@ -83,7 +84,6 @@ Feature: Only Unready Service Binding Resources Can Be Changed
                     resource: deployments
             """
         And jq ".status.conditions[] | select(.type=="Ready").status" of Service Binding "sbr-2" should be changed to "False"
-        And The service "service2" does not exist
         And The Custom Resource is present
         """
         apiVersion: stable.example.com/v1
