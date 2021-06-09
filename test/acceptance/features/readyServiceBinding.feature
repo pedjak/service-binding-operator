@@ -1,14 +1,14 @@
-Feature: Ready Service Binding Should Be Immutable
+Feature: Ready Service Binding Should Be Read-Only
 
     As a user of Service Binding operator
-    I should not be able to apply changes of an already applied and successful Service Binding
+    I should not be able to modify a Service Binding that is ready
 
     Background:
         Given Namespace [TEST_NAMESPACE] is used
         * Service Binding Operator is running
         * CustomResourceDefinition backends.stable.example.com is available
 
-    Scenario: Reject a change request for a Service Binding that is ready
+    Scenario: Update a Service Binding that is ready
         Given The Custom Resource is present
         """
         apiVersion: stable.example.com/v1

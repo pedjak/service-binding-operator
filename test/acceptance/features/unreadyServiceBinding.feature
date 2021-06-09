@@ -1,14 +1,14 @@
-Feature: Unsuccessful Service Binding Resource should be mutable
+Feature: Only Unready Service Binding Resources Can Be Changed
 
     As a user of Service Binding operator
-    I should be able to reapply my SBR since the previous SBR was unsuccessful
+    I should be able to modify a Service Binding if it is not yet ready
 
     Background:
         Given Namespace [TEST_NAMESPACE] is used
         * Service Binding Operator is running
         * CustomResourceDefinition backends.stable.example.com is available
 
-    Scenario: Reapply SBR when SB CR status ready is false due to Application Not Found
+    Scenario: Allow modifying a Service Binding when it is not yet ready due to "Application Not Found"
         Given The Custom Resource is present
         """
         apiVersion: stable.example.com/v1
@@ -62,7 +62,7 @@ Feature: Unsuccessful Service Binding Resource should be mutable
         Then Service Binding "sbr-1" is ready
 
 
-    Scenario: Reapply SBR when SB CR status ready is false due to Service Not Found
+    Scenario: Allow modifying a Service Binding when it is not yet ready due to "Service Not Found"
         Given Generic test application "app3" is running
         And Service Binding is applied
             """
