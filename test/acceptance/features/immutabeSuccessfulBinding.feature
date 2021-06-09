@@ -1,14 +1,14 @@
-Feature: Successful Service Binding Resource should be Immutable 
+Feature: Ready Service Binding Should Be Immutable
 
     As a user of Service Binding operator
-    I should not be able to apply changes of an already applied and successful Service Binding Resource
+    I should not be able to apply changes of an already applied and successful Service Binding
 
     Background:
         Given Namespace [TEST_NAMESPACE] is used
         * Service Binding Operator is running
         * CustomResourceDefinition backends.stable.example.com is available
 
-    Scenario: Forbid user from reapplying the SBR for an already succesful SBR
+    Scenario: Reject a change request for a Service Binding that is ready
         Given The Custom Resource is present
         """
         apiVersion: stable.example.com/v1
