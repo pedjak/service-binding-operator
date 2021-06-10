@@ -41,7 +41,7 @@ def before_all(_context):
     elif start_sbo == "remote":
         output, code = cmd.run(
             f"{ctx.cli} get deployment --all-namespaces -o json"
-            + " | jq -rc '.items[] | select(.metadata.name == \"service-binding-operator\").metadata.namespace'")
+            + " | jq -rc '.items[] | select(.metadata.name == \"service-binding-operator-controller-manager\").metadata.namespace'")
         assert code == 0, f"Non-zero return code while trying to detect namespace for SBO: {output}"
         output = str(output).strip()
         assert output != "", "Unable to find SBO's deployment in any namespace."

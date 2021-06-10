@@ -10,7 +10,7 @@ class Servicebindingoperator():
 
     name_pattern = f"{name}.*"
 
-    def __init__(self,  name="service-binding-operator", namespace="openshift-operators"):
+    def __init__(self,  name="service-binding-operator", namespace="service-binding-operator-system"):
         self.namespace = namespace
         self.name = name
 
@@ -20,7 +20,7 @@ class Servicebindingoperator():
         return True
 
     def check_deployment(self):
-        sbo_namespace = self.openshift.lookup_namespace_for_resource("deployments", "service-binding-operator")
+        sbo_namespace = self.openshift.lookup_namespace_for_resource("deployments", "service-binding-operator-controller-manager")
         return sbo_namespace is not None
 
     def is_running(self):
