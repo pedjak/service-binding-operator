@@ -605,4 +605,4 @@ def sbr_webhook(context):
         else:
             ns = None
     output, exit_code = openshift.apply_invalid(context.text, ns)
-    assert exit_code is 1, f"Unable to apply Yaml for CR"
+    assert exit_code == 1, f"Unable to apply Yaml for CR"
