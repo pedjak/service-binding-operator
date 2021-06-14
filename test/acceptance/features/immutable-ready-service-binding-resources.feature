@@ -58,7 +58,7 @@ Feature: Successful Service Binding Resources are Immutable
                     kind: Backend
                     name: service-immutable
             """
-
+@wip
     Scenario: Allow modifying a Service Binding when it is not yet ready due to "Application Not Found"
         Given The Custom Resource is present
         """
