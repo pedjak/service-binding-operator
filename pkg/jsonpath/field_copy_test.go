@@ -1,6 +1,7 @@
-package binding
+package jsonpath
 
 import (
+	"reflect"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -60,52 +61,51 @@ func TestNestedFieldCopy(t *testing.T) {
 		}
 	}`)
 	tests := []struct {
-		Path    []string
-		Want    string
-		WantOK  bool
+		Path    string
+		Want    interface{}
 		WantErr bool
 	}{
 		{
-			Path:    []string{"spec", "serviceName"},
+			Path:    ".spec.serviceName",
 			Want:    "db1-svc",
-			WantOK:  true,
-			WantErr: false,
 		},
 		{
-			Path:    []string{"spec", "template", "spec", "containers[0]", "name"},
+			Path:    ".spec.template.spec.containers[0].name",
 			Want:    "db1",
-			WantOK:  true,
-			WantErr: false,
 		},
 		{
-			Path:    []string{"spec", "template", "spec", "containers[0]", "env[2]", "value"},
+			Path:    ".spec.template.spec.containers[0].env[2].value",
 			Want:    "mydb",
-			WantOK:  true,
-			WantErr: false,
 		},
 		{
-			Path:    []string{"spec", "template", "spec", "containers[?(@.name==\"db1\")]", "env[?(@.name==\"POSTGRESQL_USER\")]", "value"},
+			Path:    ".spec.template.spec.containers[?(@.name==\"db1\")].env[?(@.name==\"POSTGRESQL_USER\")].value",
 			Want:    "user1",
-			WantOK:  true,
-			WantErr: false,
 		},
+		{
+			Path:    ".spec.template.metadata.labels",
+			Want:    []interface{}{map[string]interface{} {
+			"app": "db1",
+
+			}},
+		},
+
+	}
+
+	var u unstructured.Unstructured
+	err := u.UnmarshalJSON(json)
+	if err != nil {
+		t.Errorf("Error unmarshaling json input\n")
 	}
 
 	for _, test := range tests {
-		var u unstructured.Unstructured
-		err := u.UnmarshalJSON(json)
-		if err != nil {
-			t.Errorf("Error unmarshaling json input\n")
-		}
-		result, ok, err := getValuesByJSONPath(u.Object, test.Path...)
-		if ok != test.WantOK {
-			t.Errorf("Expecting ok %v, got %v\n", test.WantOK, ok)
-		}
-		if (err != nil) != test.WantErr {
-			t.Errorf("Expecting err %v, got %v\n", test.WantErr, err != nil)
-		}
-		if result != test.Want {
-			t.Errorf("Expecting %s, got %s\n", test.Want, result)
-		}
+		t.Run(test.Path, func(t *testing.T) {
+			result, err := getValuesByJSONPath(u.Object, "{"+test.Path+"}")
+			if (err != nil) != test.WantErr {
+				t.Errorf("Expecting err %v, got %v\n", test.WantErr, err)
+			}
+			if !reflect.DeepEqual(result[0],test.Want) {
+				t.Errorf("Expecting %s, got %s\n", test.Want, result)
+			}
+		})
 	}
 }

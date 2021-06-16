@@ -2,9 +2,7 @@ package binding
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-
+	"github.com/redhat-developer/service-binding-operator/pkg/jsonpath"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -64,16 +62,13 @@ func (d *stringDefinition) getOutputName() string {
 func (d *stringDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *stringDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	val, ok, err := getValuesByJSONPath(u.Object, d.path...)
+	val, err := jsonpath.getValuesByJSONPath(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
-		return nil, errors.New("not found")
-	}
 
 	m := map[string]interface{}{
-		d.getOutputName(): val,
+		d.getOutputName(): val[0][0].Interface(),
 	}
 
 	return &value{v: m}, nil
@@ -96,7 +91,7 @@ func (d *stringFromDataFieldDefinition) Apply(u *unstructured.Unstructured) (Val
 		return nil, errors.New("kubeClient required for this functionality")
 	}
 
-	resourceName, ok, err := getValuesByJSONPath(u.Object, d.path...)
+	resourceName, ok, err := jsonpath.getValuesByJSONPath(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
@@ -152,12 +147,9 @@ func (d *mapFromDataFieldDefinition) Apply(u *unstructured.Unstructured) (Value,
 		return nil, errors.New("kubeClient required for this functionality")
 	}
 
-	resourceName, ok, err := getValuesByJSONPath(u.Object, d.path...)
+	resourceName, err := jsonpath.getValuesByJSONPath(u.Object, d.path...)
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, errors.New("not found")
 	}
 
 	var otherObj *unstructured.Unstructured
@@ -215,7 +207,7 @@ var _ Definition = (*stringOfMapDefinition)(nil)
 func (d *stringOfMapDefinition) GetPath() []string { return d.path }
 
 func (d *stringOfMapDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	strval, ok, err := getValuesByJSONPath(u.Object, d.path...)
+	strval, ok, err := jsonpath.getValuesByJSONPath(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +244,7 @@ var _ Definition = (*sliceOfMapsFromPathDefinition)(nil)
 func (d *sliceOfMapsFromPathDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *sliceOfMapsFromPathDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	strval, ok, err := getValuesByJSONPath(u.Object, d.path...)
+	strval, ok, err := jsonpath.getValuesByJSONPath(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +282,7 @@ var _ Definition = (*sliceOfStringsFromPathDefinition)(nil)
 func (d *sliceOfStringsFromPathDefinition) GetPath() []string { return d.path[0 : len(d.path)-1] }
 
 func (d *sliceOfStringsFromPathDefinition) Apply(u *unstructured.Unstructured) (Value, error) {
-	strval, ok, err := getValuesByJSONPath(u.Object, d.path...)
+	strval, ok, err := jsonpath.getValuesByJSONPath(u.Object, d.path...)
 	if err != nil {
 		return nil, err
 	}
