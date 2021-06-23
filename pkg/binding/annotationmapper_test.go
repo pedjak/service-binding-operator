@@ -72,7 +72,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &stringDefinition{
 				outputName: "username",
-				path:       []string{"status", "dbCredential", "username"},
+				definition: definition{
+					path:       "{.status.dbCredential.username}",
+				},
 			},
 		},
 
@@ -84,7 +86,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &stringDefinition{
 				outputName: "anotherUsernameField",
-				path:       []string{"status", "dbCredential", "username"},
+				definition: definition{
+					path:       "{.status.dbCredential.username}",
+				},
 			},
 		},
 
@@ -95,8 +99,10 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 				value: "path={.status.dbCredential.username}",
 			},
 			expectedValue: &stringDefinition{
-				outputName: "username",
-				path:       []string{"status", "dbCredential", "username"},
+				outputName: "",
+				definition: definition{
+					path: "{.status.dbCredential.username}",
+				},
 			},
 		},
 
@@ -109,7 +115,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			expectedValue: &mapFromDataFieldDefinition{
 				objectType:  secretObjectType,
 				outputName:  "username",
-				path:        []string{"status", "dbCredential"},
+				definition: definition{
+					path: "{.status.dbCredential}",
+				},
 				sourceValue: "username",
 			},
 		},
@@ -123,7 +131,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			expectedValue: &mapFromDataFieldDefinition{
 				objectType:  secretObjectType,
 				outputName:  "anotherUsernameField",
-				path:        []string{"status", "dbCredential"},
+				definition: definition{
+					path: "{.status.dbCredential}",
+				},
 				sourceValue: "username",
 			},
 		},
@@ -136,8 +146,10 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &mapFromDataFieldDefinition{
 				objectType: secretObjectType,
-				outputName: "dbCredential",
-				path:       []string{"status", "dbCredential"},
+				outputName: "",
+				definition: definition{
+					path: "{.status.dbCredential}",
+				},
 			},
 		},
 
@@ -150,7 +162,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			expectedValue: &mapFromDataFieldDefinition{
 				objectType:  configMapObjectType,
 				outputName:  "username",
-				path:        []string{"status", "dbCredential"},
+				definition: definition{
+					path: "{.status.dbCredential}",
+				},
 				sourceValue: "username",
 			},
 		},
@@ -164,7 +178,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			expectedValue: &mapFromDataFieldDefinition{
 				objectType:  configMapObjectType,
 				outputName:  "anotherUsernameField",
-				path:        []string{"status", "dbCredential"},
+				definition: definition{
+					path: "{.status.dbCredential}",
+				},
 				sourceValue: "username",
 			},
 		},
@@ -177,8 +193,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &mapFromDataFieldDefinition{
 				objectType:  configMapObjectType,
-				outputName:  "dbCredential",
-				path:        []string{"status", "dbCredential"},
+				definition: definition{
+					path: "{.status.dbCredential}",
+				},
 				sourceValue: "username",
 			},
 		},
@@ -191,7 +208,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &stringOfMapDefinition{
 				outputName: "database",
-				path:       []string{"status", "database"},
+				definition: definition{
+					path: "{.status.database}",
+				},
 			},
 		},
 
@@ -203,7 +222,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &stringOfMapDefinition{
 				outputName: "anotherDatabaseField",
-				path:       []string{"status", "database"},
+				definition: definition{
+					path: "{.status.database}",
+				},
 			},
 		},
 
@@ -214,8 +235,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 				value: "path={.status.database},elementType=map",
 			},
 			expectedValue: &stringOfMapDefinition{
-				outputName: "database",
-				path:       []string{"status", "database"},
+				definition: definition{
+					path: "{.status.database}",
+				},
 			},
 		},
 
@@ -226,8 +248,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 				value: "path={.status.bootstrap},elementType=sliceOfMaps,sourceKey=type,sourceValue=url",
 			},
 			expectedValue: &sliceOfMapsFromPathDefinition{
-				outputName:  "bootstrap",
-				path:        []string{"status", "bootstrap"},
+				definition: definition{
+					path: "{.status.bootstrap}",
+				},
 				sourceKey:   "type",
 				sourceValue: "url",
 			},
@@ -241,7 +264,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 			},
 			expectedValue: &sliceOfMapsFromPathDefinition{
 				outputName:  "anotherBootstrapField",
-				path:        []string{"status", "bootstrap"},
+				definition: definition{
+					path: "{.status.bootstrap}",
+				},
 				sourceKey:   "type",
 				sourceValue: "url",
 			},
@@ -254,8 +279,9 @@ func TestAnnotationBackedBuilderValidAnnotations(t *testing.T) {
 				value: "path={.status.bootstrap},elementType=sliceOfStrings,sourceValue=url",
 			},
 			expectedValue: &sliceOfStringsFromPathDefinition{
-				outputName:  "bootstrap",
-				path:        []string{"status", "bootstrap"},
+				definition: definition{
+					path: "{.status.bootstrap}",
+				},
 				sourceValue: "url",
 			},
 		},

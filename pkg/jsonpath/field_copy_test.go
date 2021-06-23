@@ -1,7 +1,7 @@
 package jsonpath
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -83,10 +83,14 @@ func TestNestedFieldCopy(t *testing.T) {
 		},
 		{
 			Path:    ".spec.template.metadata.labels",
-			Want:    []interface{}{map[string]interface{} {
+			Want:    map[string]interface{} {
 			"app": "db1",
 
-			}},
+			},
+		},
+		{
+			Path:    ".foo",
+			WantErr: true,
 		},
 
 	}
@@ -99,12 +103,12 @@ func TestNestedFieldCopy(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Path, func(t *testing.T) {
-			result, err := getValuesByJSONPath(u.Object, "{"+test.Path+"}")
+			result, err := GetValuesByJSONPath(u.Object, "{"+test.Path+"}")
 			if (err != nil) != test.WantErr {
 				t.Errorf("Expecting err %v, got %v\n", test.WantErr, err)
 			}
-			if !reflect.DeepEqual(result[0],test.Want) {
-				t.Errorf("Expecting %s, got %s\n", test.Want, result)
+			if !test.WantErr && fmt.Sprintf("%v", result[0].Interface()) !=  fmt.Sprintf("%v", test.Want) {
+				t.Errorf("Expecting %v, got %v\n", test.Want, result[0].Interface())
 			}
 		})
 	}

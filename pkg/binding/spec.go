@@ -4,12 +4,8 @@ import (
 	"context"
 	"fmt"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"strings"
-
-	"github.com/mitchellh/copystructure"
-	"github.com/redhat-developer/service-binding-operator/pkg/nested"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -85,8 +81,6 @@ func (s *SpecHandler) Handle() (result, error) {
 
 	v := val.Get()
 
-	path := strings.Join(d.GetPath(), ".")
-
 	out := make(map[string]interface{})
 
 	switch t := v.(type) {
@@ -100,16 +94,12 @@ func (s *SpecHandler) Handle() (result, error) {
 		}
 	}
 
-	cpy, err := copystructure.Copy(out)
 	if err != nil {
 		return result{}, err
 	}
 
-	rawData := nested.ComposeValue(cpy, nested.NewPath(path))
-
 	return result{
 		Data:    out,
-		RawData: rawData,
 	}, nil
 }
 

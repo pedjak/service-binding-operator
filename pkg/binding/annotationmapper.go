@@ -71,14 +71,16 @@ func (m *annotationBackedDefinitionBuilder) Build() (Definition, error) {
 	}
 
 	if len(outputName) == 0 {
-		outputName = mod.path[len(mod.path)-1]
+		outputName = ""
 	}
 
 	switch {
 	case mod.isStringElementType() && mod.isStringObjectType():
 		return &stringDefinition{
 			outputName: outputName,
-			path:       mod.path,
+			definition: definition{
+				path:       mod.path,
+			},
 		}, nil
 
 	case mod.isStringElementType() && mod.hasDataField():
@@ -86,7 +88,9 @@ func (m *annotationBackedDefinitionBuilder) Build() (Definition, error) {
 			secretConfigMapReader: m.secretConfigMapReader,
 			objectType:            mod.objectType,
 			outputName:            outputName,
-			path:                  mod.path,
+			definition: definition{
+				path:       mod.path,
+			},
 			sourceKey:             mod.sourceKey,
 		}, nil
 
@@ -95,20 +99,26 @@ func (m *annotationBackedDefinitionBuilder) Build() (Definition, error) {
 			secretConfigMapReader: m.secretConfigMapReader,
 			objectType:            mod.objectType,
 			outputName:            outputName,
-			path:                  mod.path,
+			definition: definition{
+				path:       mod.path,
+			},
 			sourceValue:           mod.sourceValue,
 		}, nil
 
 	case mod.isMapElementType() && mod.isStringObjectType():
 		return &stringOfMapDefinition{
 			outputName: outputName,
-			path:       mod.path,
+			definition: definition{
+				path:       mod.path,
+			},
 		}, nil
 
 	case mod.isSliceOfMapsElementType():
 		return &sliceOfMapsFromPathDefinition{
 			outputName:  outputName,
-			path:        mod.path,
+			definition: definition{
+				path:       mod.path,
+			},
 			sourceKey:   mod.sourceKey,
 			sourceValue: mod.sourceValue,
 		}, nil
@@ -116,7 +126,9 @@ func (m *annotationBackedDefinitionBuilder) Build() (Definition, error) {
 	case mod.isSliceOfStringsElementType():
 		return &sliceOfStringsFromPathDefinition{
 			outputName:  outputName,
-			path:        mod.path,
+			definition: definition{
+				path:       mod.path,
+			},
 			sourceValue: mod.sourceValue,
 		}, nil
 	}
