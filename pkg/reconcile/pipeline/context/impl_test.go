@@ -26,6 +26,9 @@ import (
 	"k8s.io/client-go/testing"
 )
 
+var testProvider = &provider{}
+
+
 var _ = Describe("Context", func() {
 
 	var (
@@ -74,7 +77,8 @@ var _ = Describe("Context", func() {
 			u.SetGroupVersionKind(schema.GroupVersionKind{Group: "app", Version: "v1", Kind: "Foo"})
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u)
 
-			ctx := &impl{client: client, serviceBinding: &sb, typeLookup: typeLookup}
+			ctx, err := Provider(client, typeLookup).Get(&sb)
+			Expect(err).NotTo(HaveOccurred())
 
 			applications, err := ctx.Applications()
 			Expect(err).NotTo(HaveOccurred())
@@ -126,7 +130,8 @@ var _ = Describe("Context", func() {
 
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u1, u2)
 
-			ctx := &impl{client: client, serviceBinding: &sb, typeLookup: typeLookup}
+			ctx, err := Provider(client, typeLookup).Get(&sb)
+			Expect(err).NotTo(HaveOccurred())
 
 			applications, err := ctx.Applications()
 			Expect(err).NotTo(HaveOccurred())
@@ -175,9 +180,10 @@ var _ = Describe("Context", func() {
 			u.SetLabels(map[string]string{"env": "stage"})
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u)
 
-			ctx := &impl{client: client, serviceBinding: &sb, typeLookup: typeLookup}
+			ctx, err := Provider(client, typeLookup).Get(&sb)
+			Expect(err).NotTo(HaveOccurred())
 
-			_, err := ctx.Applications()
+			_, err = ctx.Applications()
 			Expect(err).To(HaveOccurred())
 		},
 			Entry("no binding path specified", nil, defaultContainerPath),
@@ -217,10 +223,10 @@ var _ = Describe("Context", func() {
 				func(action testing.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, e.New(expectedError)
 				})
+			ctx, err := Provider(client, typeLookup).Get(&sb)
+			Expect(err).NotTo(HaveOccurred())
 
-			ctx := &impl{client: client, serviceBinding: &sb, typeLookup: typeLookup}
-
-			_, err := ctx.Applications()
+			_, err = ctx.Applications()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(expectedError))
 		})
@@ -248,9 +254,10 @@ var _ = Describe("Context", func() {
 
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 
-			ctx := &impl{client: client, serviceBinding: &sb, typeLookup: typeLookup}
+			ctx, err := Provider(client, typeLookup).Get(&sb)
+			Expect(err).NotTo(HaveOccurred())
 
-			_, err := ctx.Applications()
+			_, err = ctx.Applications()
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -297,11 +304,8 @@ var _ = Describe("Context", func() {
 				gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
 				typeLookup.EXPECT().ResourceForReferable(gomock.Any()).Return(gvr, nil).Times(len(tc.serviceGVKs))
 
-				ctx := &impl{
-					serviceBinding: sb,
-					client:         client,
-					typeLookup:     typeLookup,
-				}
+				ctx, err := Provider(client, typeLookup).Get(sb)
+				Expect(err).NotTo(HaveOccurred())
 
 				services, err := ctx.Services()
 				Expect(err).NotTo(HaveOccurred())
@@ -375,13 +379,10 @@ var _ = Describe("Context", func() {
 			gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
 			typeLookup.EXPECT().ResourceForReferable(gomock.Any()).Return(gvr, nil)
 
-			ctx := &impl{
-				serviceBinding: sb,
-				client:         client,
-				typeLookup:     typeLookup,
-			}
+			ctx, err := Provider(client, typeLookup).Get(sb)
+			Expect(err).NotTo(HaveOccurred())
 
-			_, err := ctx.Services()
+			_, err = ctx.Services()
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -407,43 +408,40 @@ var _ = Describe("Context", func() {
 			gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
 			typeLookup.EXPECT().ResourceForReferable(gomock.Any()).Return(gvr, nil).Times(2)
 
-			ctx := &impl{
-				serviceBinding: sb,
-				client:         client,
-				typeLookup:     typeLookup,
-			}
+			ctx, err := Provider(client, typeLookup).Get(sb)
+			Expect(err).NotTo(HaveOccurred())
 
-			_, err := ctx.Services()
+			_, err = ctx.Services()
 			Expect(err).To(HaveOccurred())
 		})
 	})
 
 	Describe("Binding Secret Name", func() {
 		It("should not be empty string", func() {
-			ctx := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx, _ := testProvider.Get(&v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sb1",
 				},
-			}}
+			})
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
 
 			Expect(ctx.BindingSecretName()).NotTo(BeEmpty())
 		})
 
 		It("should not depend on binding item order", func() {
-			ctx := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx, _ := testProvider.Get( &v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sb1",
 				},
-			}}
+			})
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo2", Value: "v2"})
 
-			ctx2 := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx2, _ := testProvider.Get(&v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sb1",
 				},
-			}}
+			})
 			ctx2.AddBindingItem(&pipeline.BindingItem{Name: "foo2", Value: "v2"})
 			ctx2.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
 
@@ -453,12 +451,12 @@ var _ = Describe("Context", func() {
 		It("should be equal to existing secret if additional binding items exist", func() {
 			secretName := "foo"
 			namespace := "ns1"
-			ctx := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx, _ := testProvider.Get(&v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
 				},
-			}}
+			})
 			secret := &unstructured.Unstructured{Object: map[string]interface{}{
 				"data": map[string]interface{}{
 					"foo1": base64.StdEncoding.EncodeToString([]byte("val1")),
@@ -478,12 +476,12 @@ var _ = Describe("Context", func() {
 		It("should be generated if additional items are added", func() {
 			secretName := "foo"
 			namespace := "ns1"
-			ctx := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx,_ := testProvider.Get(&v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
 				},
-			}}
+			})
 			secret := &unstructured.Unstructured{Object: map[string]interface{}{
 				"data": map[string]interface{}{
 					"foo1": base64.StdEncoding.EncodeToString([]byte("val1")),
@@ -506,12 +504,12 @@ var _ = Describe("Context", func() {
 		It("should be generated if item key is modified", func() {
 			secretName := "foo"
 			namespace := "ns1"
-			ctx := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx, _ := testProvider.Get(&v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
 				},
-			}}
+			})
 			secret := &unstructured.Unstructured{Object: map[string]interface{}{
 				"data": map[string]interface{}{
 					"foo1": base64.StdEncoding.EncodeToString([]byte("val1")),
@@ -538,12 +536,12 @@ var _ = Describe("Context", func() {
 		It("should be generated if two binding secrets are set", func() {
 			secretNames := []string{"foo", "bar"}
 			namespace := "ns1"
-			ctx := &impl{serviceBinding: &v1alpha12.ServiceBinding{
+			ctx, _ := testProvider.Get(&v1alpha12.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
 				},
-			}}
+			})
 			for _, sn := range secretNames {
 				secret := &unstructured.Unstructured{Object: map[string]interface{}{
 					"data": map[string]interface{}{

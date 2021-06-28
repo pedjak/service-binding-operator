@@ -18,11 +18,17 @@ package spec
 
 import (
 	"github.com/go-logr/logr"
+	"github.com/redhat-developer/service-binding-operator/apis/spec/v1alpha2"
+	"github.com/redhat-developer/service-binding-operator/controllers"
+	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline"
+	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline/builder"
+	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline/context"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	specv1alpha2 "github.com/redhat-developer/service-binding-operator/apis/spec/v1alpha2"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // ServiceBindingReconciler reconciles a ServiceBinding object
@@ -30,6 +36,10 @@ type ServiceBindingReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
+
+	dynClient dynamic.Interface // kubernetes dynamic api client
+
+	pipeline pipeline.Pipeline
 }
 
 // +kubebuilder:rbac:groups=service.binding,resources=servicebindings,verbs=get;list;watch;create;update;patch;delete
@@ -60,7 +70,18 @@ func (r *ServiceBindingReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ServiceBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	client, err := dynamic.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+
+	r.dynClient = client
+
+	r.pipeline = builder.DefaultBuilder.WithContextProvider(context.Provider(r.dynClient, context.ResourceLookup(mgr.GetRESTMapper()))).Build()
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&specv1alpha2.ServiceBinding{}).
+		For(&v1alpha2.ServiceBinding{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: controllers.MaxConcurrentReconciles}).
 		Complete(r)
 }
