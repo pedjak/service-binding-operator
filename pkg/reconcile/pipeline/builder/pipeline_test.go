@@ -122,6 +122,6 @@ type ctxProvider struct {
 	ctx pipeline.Context
 }
 
-func (c *ctxProvider) Get(binding *v1alpha12.ServiceBinding) (pipeline.Context, error) {
+func (c *ctxProvider) Get(binding interface{}) (pipeline.Context, error) {
 	return c.ctx, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	e "errors"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
+	"github.com/redhat-developer/service-binding-operator/apis"
 	"github.com/redhat-developer/service-binding-operator/pkg/binding"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,13 +40,14 @@ var bindableResourceGVRs = []schema.GroupVersionResource{
 
 type service struct {
 	client                dynamic.Interface
-	serviceRef            *v1alpha12.Service
+	serviceRef            *apis.NamespacedRef
 	resource              *unstructured.Unstructured
 	groupVersionResource  *schema.GroupVersionResource
 	crd                   *customResourceDefinition
 	crdLookup             bool
 	lookForOwnedResources bool
 	bindingDefinitions    []binding.Definition
+	id					  *string
 }
 
 func (s *service) OwnedResources() ([]*unstructured.Unstructured, error) {
@@ -76,7 +77,7 @@ func (s *service) OwnedResources() ([]*unstructured.Unstructured, error) {
 }
 
 func (s *service) Id() *string {
-	return s.serviceRef.Id
+	return s.id
 }
 
 func (s *service) Resource() *unstructured.Unstructured {

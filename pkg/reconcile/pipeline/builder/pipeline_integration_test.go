@@ -2,6 +2,7 @@ package builder_test
 
 import (
 	c "context"
+	"github.com/redhat-developer/service-binding-operator/apis"
 	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 	"reflect"
 
@@ -43,8 +44,8 @@ var _ = Describe("Default Pipeline", func() {
 		serviceGVR := schema.GroupVersionResource{Group: "services", Version: "v1", Resource: "databases"}
 		serviceGVK := serviceGVR.GroupVersion().WithKind("Database")
 		serviceRef := v1alpha12.Service{
-			NamespacedRef: v1alpha12.NamespacedRef{
-				Ref: v1alpha12.Ref{
+			NamespacedRef: apis.NamespacedRef{
+				Ref: apis.Ref{
 					Group:    serviceGVR.Group,
 					Version:  serviceGVR.Version,
 					Resource: serviceGVR.Resource,
@@ -56,7 +57,7 @@ var _ = Describe("Default Pipeline", func() {
 		appGVK := appGVR.GroupVersion().WithKind("Deployment")
 		appName := "app1"
 		appRef := v1alpha12.Application{
-			Ref: v1alpha12.Ref{
+			Ref: apis.Ref{
 				Group:    appGVR.Group,
 				Version:  appGVR.Version,
 				Resource: appGVR.Resource,

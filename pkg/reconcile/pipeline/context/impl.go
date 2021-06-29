@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 	"sort"
 
@@ -85,6 +86,7 @@ type bindingImpl struct {
 	serviceBinding *v1alpha1.ServiceBinding
 }
 
+
 func (i *impl) UnbindRequested() bool {
 	return !i.bindingMeta.DeletionTimestamp.IsZero()
 }
@@ -92,39 +94,48 @@ func (i *impl) UnbindRequested() bool {
 type provider struct {
 	client     dynamic.Interface
 	typeLookup K8STypeLookup
+	get	func(binding interface{}) (pipeline.Context, error)
 }
 
-func (p *provider) Get(sb *v1alpha1.ServiceBinding) (pipeline.Context, error) {
-	return &bindingImpl{
-		impl: impl{
-			conditions: make(map[string]*metav1.Condition),
-			client:     p.client,
-			typeLookup: p.typeLookup,
-			bindingMeta: &sb.ObjectMeta,
-			statusSecretName: func() string {
-				return sb.Status.Secret
-			},
-			setStatusSecretName: func(name string) {
-				sb.Status.Secret = name
-			},
-			unstructuredBinding: func() (*unstructured.Unstructured, error) {
-				return converter.ToUnstructured(sb)
-			},
-			statusConditions: func() *[]metav1.Condition {
-				return &sb.Status.Conditions
-			},
-			ownerReference: func() metav1.OwnerReference {
-				return sb.AsOwnerReference()
-			},
-		},
-		serviceBinding: sb,
-	}, nil
+func (p *provider) Get(binding interface{}) (pipeline.Context, error) {
+	return p.get(binding)
 }
+
 
 var Provider = func(client dynamic.Interface, typeLookup K8STypeLookup) pipeline.ContextProvider {
 	return &provider{
 		client:     client,
 		typeLookup: typeLookup,
+		get: func(binding interface{}) (pipeline.Context, error) {
+			switch sb := binding.(type) {
+			case *v1alpha1.ServiceBinding:
+				return &bindingImpl{
+					impl: impl{
+						conditions: make(map[string]*metav1.Condition),
+						client:     client,
+						typeLookup: typeLookup,
+						bindingMeta: &sb.ObjectMeta,
+						statusSecretName: func() string {
+							return sb.Status.Secret
+						},
+						setStatusSecretName: func(name string) {
+							sb.Status.Secret = name
+						},
+						unstructuredBinding: func() (*unstructured.Unstructured, error) {
+							return converter.ToUnstructured(sb)
+						},
+						statusConditions: func() *[]metav1.Condition {
+							return &sb.Status.Conditions
+						},
+						ownerReference: func() metav1.OwnerReference {
+							return sb.AsOwnerReference()
+						},
+					},
+					serviceBinding: sb,
+				}, nil
+			}
+			return nil, fmt.Errorf("cannot create context for passed instance %v", binding)
+		},
 	}
 }
 
@@ -160,7 +171,7 @@ func (i *bindingImpl) Services() ([]pipeline.Service, error) {
 			if err != nil {
 				return nil, err
 			}
-			i.services = append(i.services, &service{client: i.client, resource: u, groupVersionResource: gvr, serviceRef: &serviceRef, lookForOwnedResources: i.serviceBinding.Spec.DetectBindingResources})
+			i.services = append(i.services, &service{client: i.client, resource: u, groupVersionResource: gvr, serviceRef: &serviceRef.NamespacedRef, id: serviceRef.Id, lookForOwnedResources: i.serviceBinding.Spec.DetectBindingResources})
 		}
 	}
 	services := make([]pipeline.Service, len(i.services))

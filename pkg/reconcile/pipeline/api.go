@@ -155,7 +155,7 @@ type Context interface {
 
 // Provides context for a given service binding
 type ContextProvider interface {
-	Get(binding *v1alpha1.ServiceBinding) (Context, error)
+	Get(binding interface{}) (Context, error)
 }
 
 type HandlerFunc func(ctx Context)

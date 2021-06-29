@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	e "errors"
 	"fmt"
+	"github.com/redhat-developer/service-binding-operator/apis"
 	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 
 	"github.com/golang/mock/gomock"
@@ -26,7 +27,7 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-var testProvider = &provider{}
+var testProvider = Provider(nil, nil)
 
 
 var _ = Describe("Context", func() {
@@ -50,7 +51,7 @@ var _ = Describe("Context", func() {
 
 		DescribeTable("should return slice of size 1 if application is specified", func(bindingPath *v1alpha12.BindingPath, expectedContainerPath string) {
 			ref := v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",
@@ -95,7 +96,7 @@ var _ = Describe("Context", func() {
 			}
 
 			ref := v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",
@@ -152,7 +153,7 @@ var _ = Describe("Context", func() {
 			}
 
 			ref := v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",
@@ -196,7 +197,7 @@ var _ = Describe("Context", func() {
 			}
 
 			ref := v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",
@@ -232,7 +233,7 @@ var _ = Describe("Context", func() {
 		})
 		It("should return error if application is not found", func() {
 			ref := v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",
@@ -264,12 +265,12 @@ var _ = Describe("Context", func() {
 
 	Describe("Services", func() {
 		var (
-			defServiceBinding = func(name string, namespace string, refs ...v1alpha12.Ref) *v1alpha12.ServiceBinding {
+			defServiceBinding = func(name string, namespace string, refs ...apis.Ref) *v1alpha12.ServiceBinding {
 				var services []v1alpha12.Service
 				for idx, ref := range refs {
 					id := fmt.Sprintf("id%v", idx)
 					services = append(services, v1alpha12.Service{
-						NamespacedRef: v1alpha12.NamespacedRef{
+						NamespacedRef: apis.NamespacedRef{
 							Ref: ref,
 						},
 						Id: &id,
@@ -285,7 +286,7 @@ var _ = Describe("Context", func() {
 		)
 
 		type testCase struct {
-			serviceRefs []v1alpha12.Ref
+			serviceRefs []apis.Ref
 			serviceGVKs []schema.GroupVersionKind
 		}
 
@@ -319,11 +320,11 @@ var _ = Describe("Context", func() {
 					Expect(serviceImpl.client).To(Equal(client))
 					Expect(serviceImpl.groupVersionResource).To(Equal(gvr))
 					Expect(serviceImpl.serviceRef.Name).To(Equal(tc.serviceRefs[i].Name))
-					Expect(*serviceImpl.serviceRef.Id).To(Equal(fmt.Sprintf("id%v", i)))
+					Expect(*serviceImpl.id).To(Equal(fmt.Sprintf("id%v", i)))
 				}
 			},
 			Entry("single service", &testCase{
-				serviceRefs: []v1alpha12.Ref{
+				serviceRefs: []apis.Ref{
 					{
 						Group:   "foo",
 						Version: "v1",
@@ -340,7 +341,7 @@ var _ = Describe("Context", func() {
 				},
 			}),
 			Entry("two services", &testCase{
-				serviceRefs: []v1alpha12.Ref{
+				serviceRefs: []apis.Ref{
 					{
 						Group:   "foo",
 						Version: "v1",
@@ -369,7 +370,7 @@ var _ = Describe("Context", func() {
 			}),
 		)
 		It("Should return error when service not found", func() {
-			sb := defServiceBinding("sb1", "ns1", v1alpha12.Ref{
+			sb := defServiceBinding("sb1", "ns1", apis.Ref{
 				Group:   "foo",
 				Version: "v1",
 				Kind:    "Bar",
@@ -387,13 +388,13 @@ var _ = Describe("Context", func() {
 		})
 
 		It("Should return error when one service not found", func() {
-			sb := defServiceBinding("sb1", "ns1", v1alpha12.Ref{
+			sb := defServiceBinding("sb1", "ns1", apis.Ref{
 				Group:   "foo",
 				Version: "v1",
 				Kind:    "Bar",
 				Name:    "bla",
 			},
-				v1alpha12.Ref{
+				apis.Ref{
 					Group:   "foo",
 					Version: "v1",
 					Kind:    "Bar",
@@ -655,7 +656,7 @@ var _ = Describe("Context", func() {
 
 		It("should update application if changed", func() {
 			sb.Spec.Application = v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",
@@ -718,7 +719,7 @@ var _ = Describe("Context", func() {
 			sb.UID = ""
 			sb.Name = "sb2"
 			sb.Spec.Application = v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group:   "app",
 					Version: "v1",
 					Kind:    "Foo",

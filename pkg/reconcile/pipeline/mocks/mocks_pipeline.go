@@ -5,7 +5,6 @@
 package mocks
 
 import (
-	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -559,7 +558,7 @@ func (m *MockContextProvider) EXPECT() *MockContextProviderMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockContextProvider) Get(arg0 *v1alpha12.ServiceBinding) (pipeline.Context, error) {
+func (m *MockContextProvider) Get(arg0 interface{}) (pipeline.Context, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0)
 	ret0, _ := ret[0].(pipeline.Context)

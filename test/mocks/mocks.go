@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"fmt"
+	"github.com/redhat-developer/service-binding-operator/apis"
 	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 	"strings"
 
@@ -403,8 +404,8 @@ func ServiceBindingMock(
 	} else {
 		services = []v1alpha12.Service{
 			{
-				NamespacedRef: v1alpha12.NamespacedRef{
-					Ref: v1alpha12.Ref{
+				NamespacedRef: apis.NamespacedRef{
+					Ref: apis.Ref{
 						Group: CRDName, Version: CRDVersion, Kind: CRDKind, Name: backingServiceResourceRef,
 					},
 					Namespace: backingServiceNamespace,
@@ -424,7 +425,7 @@ func ServiceBindingMock(
 		Spec: v1alpha12.ServiceBindingSpec{
 			Mappings: []v1alpha12.Mapping{},
 			Application: v1alpha12.Application{
-				Ref: v1alpha12.Ref{
+				Ref: apis.Ref{
 					Group: applicationGVR.Group, Version: applicationGVR.Version, Resource: applicationGVR.Resource, Name: applicationResourceRef,
 				},
 				LabelSelector: &metav1.LabelSelector{MatchLabels: matchLabels},

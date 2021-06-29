@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha2
 
 import (
+	"github.com/redhat-developer/service-binding-operator/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -128,4 +129,27 @@ type ServiceBindingList struct {
 
 func init() {
 	SchemeBuilder.Register(&ServiceBinding{}, &ServiceBindingList{})
+}
+
+func (in *ServiceBindingServiceReference) AsRefferable() *apis.NamespacedRef {
+	typeMeta := &metav1.TypeMeta{Kind: in.Kind, APIVersion: in.APIVersion}
+	gvk := typeMeta.GroupVersionKind()
+	return &apis.NamespacedRef{
+		Ref: apis.Ref{
+			Group: gvk.Group,
+			Version: gvk.Version,
+			Kind: gvk.Kind,
+			Name: in.Name,
+		},
+	}
+}
+
+func (a *ServiceBindingApplicationReference) AsRefferable() *apis.Ref  {
+	typeMeta := &metav1.TypeMeta{Kind: a.Kind, APIVersion: a.APIVersion}
+	gvk := typeMeta.GroupVersionKind()
+	return &apis.Ref{
+			Group: gvk.Group,
+			Version: gvk.Version,
+			Kind: gvk.Kind,
+	}
 }
