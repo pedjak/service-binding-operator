@@ -24,29 +24,23 @@ import (
 
 const (
 	// BindingReady indicates that the overall sbr succeeded
-	BindingReady string = "Ready"
+
 	// CollectionReady indicates readiness for collection and persistance of intermediate manifests
-	CollectionReady string = "CollectionReady"
+
 	// InjectionReady indicates readiness to change application manifests to use those intermediate manifests
 	// If status is true, it indicates that the binding succeeded
-	InjectionReady string = "InjectionReady"
+
 	// EmptyServiceSelectorsReason is used when the ServiceBinding has empty
 	// services.
-	EmptyServiceSelectorsReason = "EmptyServiceSelectors"
+
 	// EmptyApplicationReason is used when the ServiceBinding has empty
 	// application.
-	EmptyApplicationReason = "EmptyApplication"
+
 	// ApplicationNotFoundReason is used when the application is not found.
-	ApplicationNotFoundReason = "ApplicationNotFound"
+
 	// ServiceNotFoundReason is used when the service is not found.
-	ServiceNotFoundReason = "ServiceNotFound"
-
-	BindingInjectedReason = "BindingInjected"
-
-	DataCollectedReason = "DataCollected"
 
 	// NamingStrategyError is used when naming strategy/template used is incorrect
-	NamingStrategyError = "NamingStrategyError"
 
 	finalizerName = "finalizer.servicebinding.openshift.io"
 )
@@ -215,7 +209,6 @@ func (spec *ServiceBindingSpec) NamingTemplate() string {
 		return templates["uppercase"]
 	}
 }
-
 
 func (sb *ServiceBinding) MaybeAddFinalizer() bool {
 	finalizers := sb.GetFinalizers()

@@ -1,6 +1,37 @@
-package v1alpha1
+package apis
 
-import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	// BindingReady indicates that the overall sbr succeeded
+	BindingReady string = "Ready"
+
+	// CollectionReady indicates readiness for collection and persistance of intermediate manifests
+	CollectionReady string = "CollectionReady"
+
+	// InjectionReady indicates readiness to change application manifests to use those intermediate manifests
+	// If status is true, it indicates that the binding succeeded
+	InjectionReady string = "InjectionReady"
+
+	// EmptyServiceSelectorsReason is used when the ServiceBinding has empty
+	// services.
+	EmptyApplicationReason = "EmptyApplication"
+
+	// EmptyApplicationReason is used when the ServiceBinding has empty
+	// application.
+	ApplicationNotFoundReason = "ApplicationNotFound"
+
+	// ApplicationNotFoundReason is used when the application is not found.
+	ServiceNotFoundReason = "ServiceNotFound"
+
+	// ServiceNotFoundReason is used when the service is not found.
+	BindingInjectedReason = "BindingInjected"
+
+	// NamingStrategyError is used when naming strategy/template used is incorrect
+	DataCollectedReason = "DataCollected"
+)
 
 type conditionsBuilder struct {
 	cndType string

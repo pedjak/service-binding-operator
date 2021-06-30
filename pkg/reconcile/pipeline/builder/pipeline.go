@@ -1,7 +1,6 @@
 package builder
 
 import (
-	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline/handler/collect"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline/handler/mapping"
@@ -16,7 +15,7 @@ type impl struct {
 	handlers    []pipeline.Handler
 }
 
-func (i *impl) Process(binding *v1alpha12.ServiceBinding) (bool, error) {
+func (i *impl) Process(binding interface{}) (bool, error) {
 	ctx, err := i.ctxProvider.Get(binding)
 	if err != nil {
 		return false, err

@@ -136,20 +136,32 @@ func (in *ServiceBindingServiceReference) AsRefferable() *apis.NamespacedRef {
 	gvk := typeMeta.GroupVersionKind()
 	return &apis.NamespacedRef{
 		Ref: apis.Ref{
-			Group: gvk.Group,
+			Group:   gvk.Group,
 			Version: gvk.Version,
-			Kind: gvk.Kind,
-			Name: in.Name,
+			Kind:    gvk.Kind,
+			Name:    in.Name,
 		},
 	}
 }
 
-func (a *ServiceBindingApplicationReference) AsRefferable() *apis.Ref  {
+func (a *ServiceBindingApplicationReference) AsRefferable() *apis.Ref {
 	typeMeta := &metav1.TypeMeta{Kind: a.Kind, APIVersion: a.APIVersion}
 	gvk := typeMeta.GroupVersionKind()
 	return &apis.Ref{
-			Group: gvk.Group,
-			Version: gvk.Version,
-			Kind: gvk.Kind,
+		Group:   gvk.Group,
+		Version: gvk.Version,
+		Kind:    gvk.Kind,
+		Name:    a.Name,
+	}
+}
+
+func (sb *ServiceBinding) AsOwnerReference() metav1.OwnerReference {
+	var ownerRefController bool = true
+	return metav1.OwnerReference{
+		Name:       sb.Name,
+		UID:        sb.UID,
+		Kind:       sb.Kind,
+		APIVersion: sb.APIVersion,
+		Controller: &ownerRefController,
 	}
 }

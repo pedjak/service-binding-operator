@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"github.com/redhat-developer/service-binding-operator/apis"
 	"github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
 	"sort"
 
@@ -56,6 +57,7 @@ type impl struct {
 
 	typeLookup K8STypeLookup
 
+	//nolint
 	services []*service
 
 	applications []*application
@@ -79,13 +81,14 @@ type impl struct {
 	statusConditions func() *[]metav1.Condition
 
 	ownerReference func() metav1.OwnerReference
+
+	groupVersionResource func() schema.GroupVersionResource
 }
 
 type bindingImpl struct {
 	impl
 	serviceBinding *v1alpha1.ServiceBinding
 }
-
 
 func (i *impl) UnbindRequested() bool {
 	return !i.bindingMeta.DeletionTimestamp.IsZero()
@@ -94,13 +97,12 @@ func (i *impl) UnbindRequested() bool {
 type provider struct {
 	client     dynamic.Interface
 	typeLookup K8STypeLookup
-	get	func(binding interface{}) (pipeline.Context, error)
+	get        func(binding interface{}) (pipeline.Context, error)
 }
 
 func (p *provider) Get(binding interface{}) (pipeline.Context, error) {
 	return p.get(binding)
 }
-
 
 var Provider = func(client dynamic.Interface, typeLookup K8STypeLookup) pipeline.ContextProvider {
 	return &provider{
@@ -111,9 +113,9 @@ var Provider = func(client dynamic.Interface, typeLookup K8STypeLookup) pipeline
 			case *v1alpha1.ServiceBinding:
 				return &bindingImpl{
 					impl: impl{
-						conditions: make(map[string]*metav1.Condition),
-						client:     client,
-						typeLookup: typeLookup,
+						conditions:  make(map[string]*metav1.Condition),
+						client:      client,
+						typeLookup:  typeLookup,
 						bindingMeta: &sb.ObjectMeta,
 						statusSecretName: func() string {
 							return sb.Status.Secret
@@ -129,6 +131,9 @@ var Provider = func(client dynamic.Interface, typeLookup K8STypeLookup) pipeline
 						},
 						ownerReference: func() metav1.OwnerReference {
 							return sb.AsOwnerReference()
+						},
+						groupVersionResource: func() schema.GroupVersionResource {
+							return v1alpha1.GroupVersionResource
 						},
 					},
 					serviceBinding: sb,
@@ -318,7 +323,7 @@ func (i *impl) persistBinding() error {
 	if err != nil {
 		return err
 	}
-	client := i.client.Resource(v1alpha1.GroupVersionResource).Namespace(i.bindingMeta.Namespace)
+	client := i.client.Resource(i.groupVersionResource()).Namespace(i.bindingMeta.Namespace)
 	_, err = client.UpdateStatus(context.Background(), u, metav1.UpdateOptions{})
 	return err
 }
@@ -363,12 +368,12 @@ func (i *impl) persistSecret() (string, error) {
 
 func (i *impl) Close() error {
 	if i.err != nil {
-		i.SetCondition(v1alpha1.Conditions().NotBindingReady().Reason("ProcessingError").Msg(i.err.Error()).Build())
+		i.SetCondition(apis.Conditions().NotBindingReady().Reason("ProcessingError").Msg(i.err.Error()).Build())
 		return i.persistBinding()
 	}
 	secretName, err := i.persistSecret()
 	if err != nil {
-		i.SetCondition(v1alpha1.Conditions().NotBindingReady().Reason("ErrorPersistingSecret").Msg(err.Error()).Build())
+		i.SetCondition(apis.Conditions().NotBindingReady().Reason("ErrorPersistingSecret").Msg(err.Error()).Build())
 		_ = i.persistBinding()
 		return err
 	}
@@ -379,13 +384,13 @@ func (i *impl) Close() error {
 		if app.IsUpdated() {
 			_, err = i.client.Resource(*app.gvr).Namespace(i.bindingMeta.Namespace).Update(context.Background(), app.Resource(), metav1.UpdateOptions{})
 			if err != nil {
-				i.SetCondition(v1alpha1.Conditions().NotBindingReady().Reason("ApplicationUpdateError").Msg(err.Error()).Build())
+				i.SetCondition(apis.Conditions().NotBindingReady().Reason("ApplicationUpdateError").Msg(err.Error()).Build())
 				_ = i.persistBinding()
 				return err
 			}
 		}
 	}
-	i.SetCondition(v1alpha1.Conditions().BindingReady().Reason("ApplicationsBound").Build())
+	i.SetCondition(apis.Conditions().BindingReady().Reason("ApplicationsBound").Build())
 	return i.persistBinding()
 }
 
@@ -404,4 +409,3 @@ func (i *impl) ReadSecret(namespace string, name string) (*unstructured.Unstruct
 func (i *impl) AddBindings(bindings pipeline.Bindings) {
 	i.bindings = append(i.bindings, bindings)
 }
-

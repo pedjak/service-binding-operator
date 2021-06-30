@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	v1alpha12 "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
+	"github.com/redhat-developer/service-binding-operator/apis"
 	"github.com/redhat-developer/service-binding-operator/pkg/binding"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline"
 	"github.com/redhat-developer/service-binding-operator/pkg/util"
@@ -240,7 +240,7 @@ func requestRetry(ctx pipeline.Context, reason string, err error) {
 }
 
 func notCollectionReadyCond(reason string, err error) *metav1.Condition {
-	return v1alpha12.Conditions().NotCollectionReady().Reason(reason).Msg(err.Error()).Build()
+	return apis.Conditions().NotCollectionReady().Reason(reason).Msg(err.Error()).Build()
 }
 
 func makeBindingDefinition(key string, value string, ctx pipeline.Context) (binding.Definition, error) {

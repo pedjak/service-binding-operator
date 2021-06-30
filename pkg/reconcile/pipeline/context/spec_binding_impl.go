@@ -2,13 +2,61 @@ package context
 
 import (
 	"context"
+	"fmt"
 	"github.com/redhat-developer/service-binding-operator/apis/spec/v1alpha2"
+	"github.com/redhat-developer/service-binding-operator/pkg/converter"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 )
 
 var _ pipeline.Context = &specImpl{}
+
+var SpecProvider = func(client dynamic.Interface, typeLookup K8STypeLookup) pipeline.ContextProvider {
+	return &provider{
+		client:     client,
+		typeLookup: typeLookup,
+		get: func(binding interface{}) (pipeline.Context, error) {
+			switch sb := binding.(type) {
+			case *v1alpha2.ServiceBinding:
+				return &specImpl{
+					impl: impl{
+						conditions:  make(map[string]*metav1.Condition),
+						client:      client,
+						typeLookup:  typeLookup,
+						bindingMeta: &sb.ObjectMeta,
+						statusSecretName: func() string {
+							if sb.Status.Binding == nil {
+								return ""
+							}
+							return sb.Status.Binding.Name
+						},
+						setStatusSecretName: func(name string) {
+							sb.Status.Binding = &v1alpha2.ServiceBindingSecretReference{Name: name}
+						},
+						unstructuredBinding: func() (*unstructured.Unstructured, error) {
+							return converter.ToUnstructured(sb)
+						},
+						statusConditions: func() *[]metav1.Condition {
+							return &sb.Status.Conditions
+						},
+						ownerReference: func() metav1.OwnerReference {
+							return sb.AsOwnerReference()
+						},
+						groupVersionResource: func() schema.GroupVersionResource {
+							return v1alpha2.GroupVersionResource
+						},
+					},
+					serviceBinding: sb,
+				}, nil
+			}
+			return nil, fmt.Errorf("cannot create context for passed instance %v", binding)
+		},
+	}
+}
 
 type specImpl struct {
 	impl
@@ -28,8 +76,8 @@ func (i *specImpl) Services() ([]pipeline.Service, error) {
 
 		gvr, err := i.typeLookup.ResourceForReferable(serviceRef)
 		if err != nil {
-				return nil, err
-			}
+			return nil, err
+		}
 		if serviceRef.Namespace == nil {
 			serviceRef.Namespace = &i.serviceBinding.Namespace
 		}

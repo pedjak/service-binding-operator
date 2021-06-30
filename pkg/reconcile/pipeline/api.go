@@ -2,8 +2,6 @@ package pipeline
 
 import (
 	"fmt"
-	"github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
-
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/redhat-developer/service-binding-operator/pkg/binding"
 	"github.com/redhat-developer/service-binding-operator/pkg/client/kubernetes"
@@ -21,7 +19,7 @@ type Pipeline interface {
 	// Returns true if processing should be repeated
 	// and optional error if occurred
 	// important: even if error occurred it might not be needed to retry processing
-	Process(binding *v1alpha1.ServiceBinding) (bool, error)
+	Process(binding interface{}) (bool, error)
 }
 
 // A pipeline stage

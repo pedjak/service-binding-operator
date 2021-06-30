@@ -47,7 +47,7 @@ type service struct {
 	crdLookup             bool
 	lookForOwnedResources bool
 	bindingDefinitions    []binding.Definition
-	id					  *string
+	id                    *string
 }
 
 func (s *service) OwnedResources() ([]*unstructured.Unstructured, error) {

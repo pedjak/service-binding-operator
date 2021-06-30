@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	e "errors"
-	"fmt"
 	"github.com/redhat-developer/service-binding-operator/apis"
-	bindingapi "github.com/redhat-developer/service-binding-operator/apis/binding/v1alpha1"
+	specapi "github.com/redhat-developer/service-binding-operator/apis/spec/v1alpha2"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/redhat-developer/service-binding-operator/pkg/converter"
 	"github.com/redhat-developer/service-binding-operator/pkg/reconcile/pipeline"
@@ -27,11 +25,12 @@ import (
 	"k8s.io/client-go/testing"
 )
 
-var _ = Describe("Context", func() {
+var _ = Describe("Spec API Context", func() {
 
 	var (
 		mockCtrl   *gomock.Controller
 		typeLookup *mocks.MockK8STypeLookup
+		Provider   = SpecProvider
 	)
 
 	BeforeEach(func() {
@@ -45,28 +44,24 @@ var _ = Describe("Context", func() {
 
 	Describe("Applications", func() {
 
-		DescribeTable("should return slice of size 1 if application is specified", func(bindingPath *bindingapi.BindingPath, expectedContainerPath string) {
-			ref := bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-					Name:    "app1",
-				},
-				BindingPath: bindingPath,
+		It("should return slice of size 1", func() {
+			ref := specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Name:       "app1",
 			}
 
-			sb := bindingapi.ServiceBinding{
+			sb := specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: "ns1",
 				},
-				Spec: bindingapi.ServiceBindingSpec{
+				Spec: specapi.ServiceBindingSpec{
 					Application: ref,
 				},
 			}
 			gvr := &schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&ref).Return(gvr, nil)
+			typeLookup.EXPECT().ResourceForReferable(ref.AsRefferable()).Return(gvr, nil)
 
 			u := &unstructured.Unstructured{}
 			u.SetName("app1")
@@ -74,44 +69,37 @@ var _ = Describe("Context", func() {
 			u.SetGroupVersionKind(schema.GroupVersionKind{Group: "app", Version: "v1", Kind: "Foo"})
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u)
 
-			ctx, err := Provider(client, typeLookup).Get(&sb)
+			ctx, err := SpecProvider(client, typeLookup).Get(&sb)
 			Expect(err).NotTo(HaveOccurred())
 
 			applications, err := ctx.Applications()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(applications).To(HaveLen(1))
 			Expect(applications[0].Resource()).To(Equal(u))
-			Expect(applications[0].ContainersPath()).To(Equal(expectedContainerPath))
-		},
-			Entry("no binding path specified", nil, defaultContainerPath),
-			Entry("binding path specified", &bindingapi.BindingPath{ContainersPath: "foo.bar"}, "foo.bar"),
-		)
-		DescribeTable("should return slice of size 2 if 2 applications are specified through label seclector", func(bindingPath *bindingapi.BindingPath, expectedContainerPath string) {
-			ls := &metav1.LabelSelector{
+			Expect(applications[0].ContainersPath()).To(Equal(defaultContainerPath))
+		})
+		It("should return slice of size 2 if 2 applications are specified through label selector", func() {
+			ls := metav1.LabelSelector{
 				MatchLabels: map[string]string{"env": "prod"},
 			}
 
-			ref := bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-				},
-				LabelSelector: ls,
-				BindingPath:   bindingPath,
+			ref := specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Selector:   ls,
 			}
 
-			sb := bindingapi.ServiceBinding{
+			sb := specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: "ns1",
 				},
-				Spec: bindingapi.ServiceBindingSpec{
+				Spec: specapi.ServiceBindingSpec{
 					Application: ref,
 				},
 			}
 			gvr := &schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&ref).Return(gvr, nil)
+			typeLookup.EXPECT().ResourceForReferable(ref.AsRefferable()).Return(gvr, nil)
 
 			u1 := &unstructured.Unstructured{}
 			u1.SetName("app1")
@@ -127,7 +115,7 @@ var _ = Describe("Context", func() {
 
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u1, u2)
 
-			ctx, err := Provider(client, typeLookup).Get(&sb)
+			ctx, err := SpecProvider(client, typeLookup).Get(&sb)
 			Expect(err).NotTo(HaveOccurred())
 
 			applications, err := ctx.Applications()
@@ -137,38 +125,31 @@ var _ = Describe("Context", func() {
 			Expect(applications[0].Resource().GetName()).NotTo(Equal(applications[1].Resource().GetName()))
 			Expect(applications[0].Resource()).Should(BeElementOf(u1, u2))
 			Expect(applications[1].Resource()).Should(BeElementOf(u1, u2))
-			Expect(applications[0].ContainersPath()).To(Equal(expectedContainerPath))
-			Expect(applications[1].ContainersPath()).To(Equal(expectedContainerPath))
-		},
-			Entry("no binding path specified", nil, defaultContainerPath),
-			Entry("binding path specified", &bindingapi.BindingPath{ContainersPath: "foo.bar"}, "foo.bar"),
-		)
-		DescribeTable("should return slice of size 0 if no application is matching through label seclector", func(bindingPath *bindingapi.BindingPath, expectedContainerPath string) {
-			ls := &metav1.LabelSelector{
+			Expect(applications[0].ContainersPath()).To(Equal(defaultContainerPath))
+			Expect(applications[1].ContainersPath()).To(Equal(defaultContainerPath))
+		})
+		It("should return error if no application is matching through label selector", func() {
+			ls := metav1.LabelSelector{
 				MatchLabels: map[string]string{"env": "prod"},
 			}
 
-			ref := bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-				},
-				LabelSelector: ls,
-				BindingPath:   bindingPath,
+			ref := specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Selector:   ls,
 			}
 
-			sb := bindingapi.ServiceBinding{
+			sb := specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: "ns1",
 				},
-				Spec: bindingapi.ServiceBindingSpec{
+				Spec: specapi.ServiceBindingSpec{
 					Application: ref,
 				},
 			}
 			gvr := &schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&ref).Return(gvr, nil)
+			typeLookup.EXPECT().ResourceForReferable(ref.AsRefferable()).Return(gvr, nil)
 
 			u := &unstructured.Unstructured{}
 			u.SetName("app")
@@ -177,42 +158,35 @@ var _ = Describe("Context", func() {
 			u.SetLabels(map[string]string{"env": "stage"})
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u)
 
-			ctx, err := Provider(client, typeLookup).Get(&sb)
+			ctx, err := SpecProvider(client, typeLookup).Get(&sb)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = ctx.Applications()
 			Expect(err).To(HaveOccurred())
-		},
-			Entry("no binding path specified", nil, defaultContainerPath),
-			Entry("binding path specified", &bindingapi.BindingPath{ContainersPath: "foo.bar"}, "foo.bar"),
-		)
-
+		})
 		It("should return error if application list returns error", func() {
-			ls := &metav1.LabelSelector{
+			ls := metav1.LabelSelector{
 				MatchLabels: map[string]string{"env": "prod"},
 			}
 
-			ref := bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-				},
-				LabelSelector: ls,
+			ref := specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Selector:   ls,
 			}
 
-			sb := bindingapi.ServiceBinding{
+			sb := specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: "ns1",
 				},
-				Spec: bindingapi.ServiceBindingSpec{
+				Spec: specapi.ServiceBindingSpec{
 					Application: ref,
 				},
 			}
 
 			gvr := &schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&ref).Return(gvr, nil)
+			typeLookup.EXPECT().ResourceForReferable(ref.AsRefferable()).Return(gvr, nil)
 
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 			expectedError := "Error listing foo"
@@ -220,7 +194,7 @@ var _ = Describe("Context", func() {
 				func(action testing.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, e.New(expectedError)
 				})
-			ctx, err := Provider(client, typeLookup).Get(&sb)
+			ctx, err := SpecProvider(client, typeLookup).Get(&sb)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = ctx.Applications()
@@ -228,26 +202,23 @@ var _ = Describe("Context", func() {
 			Expect(err.Error()).To(Equal(expectedError))
 		})
 		It("should return error if application is not found", func() {
-			ref := bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-					Name:    "app1",
-				},
+			ref := specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Name:       "app1",
 			}
 
-			sb := bindingapi.ServiceBinding{
+			sb := specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: "ns1",
 				},
-				Spec: bindingapi.ServiceBindingSpec{
+				Spec: specapi.ServiceBindingSpec{
 					Application: ref,
 				},
 			}
 			gvr := &schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&ref).Return(gvr, nil)
+			typeLookup.EXPECT().ResourceForReferable(ref.AsRefferable()).Return(gvr, nil)
 
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 
@@ -261,116 +232,64 @@ var _ = Describe("Context", func() {
 
 	Describe("Services", func() {
 		var (
-			defServiceBinding = func(name string, namespace string, refs ...apis.Ref) *bindingapi.ServiceBinding {
-				var services []bindingapi.Service
-				for idx, ref := range refs {
-					id := fmt.Sprintf("id%v", idx)
-					services = append(services, bindingapi.Service{
-						NamespacedRef: apis.NamespacedRef{
-							Ref: ref,
-						},
-						Id: &id,
-					})
-				}
-				sb := &bindingapi.ServiceBinding{
-					Spec: bindingapi.ServiceBindingSpec{
-						Services: services,
+			defServiceBinding = func(name string, namespace string, ref specapi.ServiceBindingServiceReference) *specapi.ServiceBinding {
+				sb := &specapi.ServiceBinding{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: namespace,
+					},
+					Spec: specapi.ServiceBindingSpec{
+						Service: ref,
 					},
 				}
 				return sb
 			}
 		)
 
-		type testCase struct {
-			serviceRefs []apis.Ref
-			serviceGVKs []schema.GroupVersionKind
-		}
-
-		DescribeTable("return successfully",
-			func(tc *testCase) {
-				sb := defServiceBinding("sb1", "ns1", tc.serviceRefs...)
-				var objs []runtime.Object
-				for i, gvk := range tc.serviceGVKs {
-					u := &unstructured.Unstructured{}
-					u.SetGroupVersionKind(gvk)
-					u.SetName(fmt.Sprintf("s%d", i))
-					u.SetNamespace(sb.Namespace)
-					objs = append(objs, u)
-				}
-				client := fake.NewSimpleDynamicClient(runtime.NewScheme(), objs...)
-				gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
-				typeLookup.EXPECT().ResourceForReferable(gomock.Any()).Return(gvr, nil).Times(len(tc.serviceGVKs))
-
-				ctx, err := Provider(client, typeLookup).Get(sb)
-				Expect(err).NotTo(HaveOccurred())
-
-				services, err := ctx.Services()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(services)).To(Equal(len(tc.serviceGVKs)))
-				for i, s := range services {
-					Expect(s.Resource()).To(Equal(objs[i]))
-					serviceImpl, ok := s.(*service)
-					if !ok {
-						Fail("not service impl")
-					}
-					Expect(serviceImpl.client).To(Equal(client))
-					Expect(serviceImpl.groupVersionResource).To(Equal(gvr))
-					Expect(serviceImpl.serviceRef.Name).To(Equal(tc.serviceRefs[i].Name))
-					Expect(*serviceImpl.id).To(Equal(fmt.Sprintf("id%v", i)))
-				}
-			},
-			Entry("single service", &testCase{
-				serviceRefs: []apis.Ref{
-					{
-						Group:   "foo",
-						Version: "v1",
-						Kind:    "Bar",
-						Name:    "s0",
-					},
-				},
-				serviceGVKs: []schema.GroupVersionKind{
-					{
-						Group:   "foo",
-						Version: "v1",
-						Kind:    "Bar",
-					},
-				},
-			}),
-			Entry("two services", &testCase{
-				serviceRefs: []apis.Ref{
-					{
-						Group:   "foo",
-						Version: "v1",
-						Kind:    "Bar",
-						Name:    "s0",
-					},
-					{
-						Group:   "foo",
-						Version: "v1",
-						Kind:    "Bar",
-						Name:    "s1",
-					},
-				},
-				serviceGVKs: []schema.GroupVersionKind{
-					{
-						Group:   "foo",
-						Version: "v1",
-						Kind:    "Bar",
-					},
-					{
-						Group:   "foo",
-						Version: "v1",
-						Kind:    "Bar",
-					},
-				},
-			}),
-		)
-		It("Should return error when service not found", func() {
-			sb := defServiceBinding("sb1", "ns1", apis.Ref{
+		It("return successfully", func() {
+			sb := defServiceBinding("sb1", "ns1", specapi.ServiceBindingServiceReference{
+				APIVersion: "foo/v1",
+				Kind:       "Bar",
+				Name:       "s0",
+			})
+			var objs []runtime.Object
+			u := &unstructured.Unstructured{}
+			u.SetGroupVersionKind(schema.GroupVersionKind{
 				Group:   "foo",
 				Version: "v1",
 				Kind:    "Bar",
-				Name:    "bla",
+			})
+			u.SetName("s0")
+			u.SetNamespace(sb.Namespace)
+			objs = append(objs, u)
+
+			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), objs...)
+			gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
+			typeLookup.EXPECT().ResourceForReferable(gomock.Any()).Return(gvr, nil)
+
+			ctx, err := Provider(client, typeLookup).Get(sb)
+			Expect(err).NotTo(HaveOccurred())
+
+			services, err := ctx.Services()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(services)).To(Equal(1))
+			s := services[0]
+
+			Expect(s.Resource()).To(Equal(u))
+			serviceImpl, ok := s.(*service)
+			if !ok {
+				Fail("not service impl")
+			}
+			Expect(serviceImpl.client).To(Equal(client))
+			Expect(serviceImpl.groupVersionResource).To(Equal(gvr))
+			Expect(serviceImpl.serviceRef.Name).To(Equal(u.GetName()))
+			Expect(serviceImpl.id).To(BeNil())
+		})
+		It("Should return error when service not found", func() {
+			sb := defServiceBinding("sb1", "ns1", specapi.ServiceBindingServiceReference{
+				APIVersion: "foo/v1",
+				Kind:       "Bar",
+				Name:       "bla",
 			})
 			client := fake.NewSimpleDynamicClient(runtime.NewScheme())
 			gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
@@ -383,40 +302,38 @@ var _ = Describe("Context", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("Should return error when one service not found", func() {
-			sb := defServiceBinding("sb1", "ns1", apis.Ref{
-				Group:   "foo",
-				Version: "v1",
-				Kind:    "Bar",
-				Name:    "bla",
-			},
-				apis.Ref{
-					Group:   "foo",
-					Version: "v1",
-					Kind:    "Bar",
-					Name:    "notfound",
-				},
-			)
-			u := &unstructured.Unstructured{}
-			u.SetGroupVersionKind(schema.GroupVersionKind{Group: "foo", Version: "v1", Kind: "Bar"})
-			u.SetNamespace(sb.GetNamespace())
-			u.SetName("bla")
-			client := fake.NewSimpleDynamicClient(runtime.NewScheme(), u)
-			gvr := &schema.GroupVersionResource{Group: "foo", Version: "v1", Resource: "bars"}
-			typeLookup.EXPECT().ResourceForReferable(gomock.Any()).Return(gvr, nil).Times(2)
-
-			ctx, err := Provider(client, typeLookup).Get(sb)
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = ctx.Services()
-			Expect(err).To(HaveOccurred())
-		})
 	})
 
+	Describe("Binding Name", func() {
+		var testProvider = Provider(nil, nil)
+		It("should be equal on .spec.name if specified", func() {
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sb1",
+				},
+				Spec: specapi.ServiceBindingSpec{
+					Name: "sb2",
+				},
+			})
+
+			Expect(ctx.BindingName()).To(Equal("sb2"))
+		})
+
+		It("should be equal on .name if .spec.name not specified", func() {
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sb1",
+				},
+			})
+
+			Expect(ctx.BindingName()).To(Equal("sb1"))
+		})
+	})
 	Describe("Binding Secret Name", func() {
 		var testProvider = Provider(nil, nil)
+
 		It("should not be empty string", func() {
-			ctx, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sb1",
 				},
@@ -427,7 +344,7 @@ var _ = Describe("Context", func() {
 		})
 
 		It("should not depend on binding item order", func() {
-			ctx, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sb1",
 				},
@@ -435,7 +352,7 @@ var _ = Describe("Context", func() {
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo2", Value: "v2"})
 
-			ctx2, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx2, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sb1",
 				},
@@ -446,10 +363,10 @@ var _ = Describe("Context", func() {
 			Expect(ctx.BindingSecretName()).To(Equal(ctx2.BindingSecretName()))
 		})
 
-		It("should be equal to existing secret if additional binding items exist", func() {
+		It("should be equal to existing secret if no additional binding items exist", func() {
 			secretName := "foo"
 			namespace := "ns1"
-			ctx, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
@@ -474,7 +391,7 @@ var _ = Describe("Context", func() {
 		It("should be generated if additional items are added", func() {
 			secretName := "foo"
 			namespace := "ns1"
-			ctx, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
@@ -502,7 +419,7 @@ var _ = Describe("Context", func() {
 		It("should be generated if item key is modified", func() {
 			secretName := "foo"
 			namespace := "ns1"
-			ctx, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
@@ -534,7 +451,7 @@ var _ = Describe("Context", func() {
 		It("should be generated if two binding secrets are set", func() {
 			secretNames := []string{"foo", "bar"}
 			namespace := "ns1"
-			ctx, _ := testProvider.Get(&bindingapi.ServiceBinding{
+			ctx, _ := testProvider.Get(&specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: namespace,
@@ -564,20 +481,20 @@ var _ = Describe("Context", func() {
 
 	Describe("Close", func() {
 		var (
-			sb     *bindingapi.ServiceBinding
+			sb     *specapi.ServiceBinding
 			ctx    pipeline.Context
 			client dynamic.Interface
 		)
 
 		BeforeEach(func() {
-			sb = &bindingapi.ServiceBinding{
+			sb = &specapi.ServiceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "sb1",
 					Namespace: "ns1",
 					UID:       "uid1",
 				},
 			}
-			sb.SetGroupVersionKind(bindingapi.GroupVersionKind)
+			sb.SetGroupVersionKind(specapi.GroupVersionKind)
 			u, _ := converter.ToUnstructured(&sb)
 			client = fake.NewSimpleDynamicClient(runtime.NewScheme(), u)
 
@@ -597,14 +514,14 @@ var _ = Describe("Context", func() {
 			err := ctx.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			u, err := client.Resource(bindingapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
+			u, err := client.Resource(specapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			updatedSB := bindingapi.ServiceBinding{}
+			updatedSB := specapi.ServiceBinding{}
 			err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &updatedSB)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(updatedSB.Status.Secret).To(BeEmpty())
+			Expect(updatedSB.Status.Binding).To(BeNil())
 			Expect(updatedSB.Status.Conditions).To(HaveLen(3))
 
 			cnd := meta.FindStatusCondition(updatedSB.Status.Conditions, apis.InjectionReady)
@@ -623,49 +540,18 @@ var _ = Describe("Context", func() {
 
 		})
 
-		It("should create only secret if no application is defined", func() {
-			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
-			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo2", Value: "v2"})
-
-			err := ctx.Close()
-			Expect(err).NotTo(HaveOccurred())
-
-			u, err := client.Resource(bindingapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred())
-
-			updatedSB := bindingapi.ServiceBinding{}
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &updatedSB)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(updatedSB.Status.Secret).NotTo(BeEmpty())
-			Expect(updatedSB.Status.Conditions).To(HaveLen(1))
-			Expect(updatedSB.Status.Conditions[0].Type).To(Equal(apis.BindingReady))
-			Expect(updatedSB.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-
-			u, err = ctx.ReadSecret(sb.Namespace, updatedSB.Status.Secret)
-			Expect(err).NotTo(HaveOccurred())
-
-			secret := &corev1.Secret{}
-			err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, secret)
-			Expect(err).NotTo(HaveOccurred())
-			items := ctx.BindingItems()
-			Expect(secret.StringData).To(Equal(items.AsMap()))
-		})
-
 		It("should update application if changed", func() {
-			sb.Spec.Application = bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-					Name:    "app1",
-				},
+			sb.Spec.Application = specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Name:       "app1",
 			}
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo2", Value: "v2"})
 
 			gvr := schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&(sb.Spec.Application)).Return(&gvr, nil)
+			ref := sb.Spec.Application.AsRefferable()
+			typeLookup.EXPECT().ResourceForReferable(ref).Return(&gvr, nil)
 
 			u := &unstructured.Unstructured{}
 			u.SetNamespace(sb.Namespace)
@@ -685,19 +571,19 @@ var _ = Describe("Context", func() {
 			err = ctx.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			u, err = client.Resource(bindingapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
+			u, err = client.Resource(specapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			updatedSB := bindingapi.ServiceBinding{}
+			updatedSB := specapi.ServiceBinding{}
 			err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &updatedSB)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(updatedSB.Status.Secret).NotTo(BeEmpty())
+			Expect(updatedSB.Status.Binding.Name).NotTo(BeEmpty())
 			Expect(updatedSB.Status.Conditions).To(HaveLen(1))
 			Expect(updatedSB.Status.Conditions[0].Type).To(Equal(apis.BindingReady))
 			Expect(updatedSB.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
 
-			u, err = ctx.ReadSecret(sb.Namespace, updatedSB.Status.Secret)
+			u, err = ctx.ReadSecret(sb.Namespace, updatedSB.Status.Binding.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			secret := &corev1.Secret{}
@@ -716,19 +602,17 @@ var _ = Describe("Context", func() {
 		It("should not update service binding if its uid is unset", func() {
 			sb.UID = ""
 			sb.Name = "sb2"
-			sb.Spec.Application = bindingapi.Application{
-				Ref: apis.Ref{
-					Group:   "app",
-					Version: "v1",
-					Kind:    "Foo",
-					Name:    "app1",
-				},
+			app := specapi.ServiceBindingApplicationReference{
+				APIVersion: "app/v1",
+				Kind:       "Foo",
+				Name:       "app1",
 			}
+			sb.Spec.Application = app
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo", Value: "v1"})
 			ctx.AddBindingItem(&pipeline.BindingItem{Name: "foo2", Value: "v2"})
 
 			gvr := schema.GroupVersionResource{Group: "app", Version: "v1", Resource: "foos"}
-			typeLookup.EXPECT().ResourceForReferable(&(sb.Spec.Application)).Return(&gvr, nil)
+			typeLookup.EXPECT().ResourceForReferable(app.AsRefferable()).Return(&gvr, nil)
 
 			u := &unstructured.Unstructured{}
 			u.SetNamespace(sb.Namespace)
@@ -748,10 +632,10 @@ var _ = Describe("Context", func() {
 			err = ctx.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = client.Resource(bindingapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
+			_, err = client.Resource(specapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
 			Expect(err).To(HaveOccurred())
 
-			u, err = ctx.ReadSecret(sb.Namespace, sb.Status.Secret)
+			u, err = ctx.ReadSecret(sb.Namespace, sb.Status.Binding.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			secret := &corev1.Secret{}
@@ -786,14 +670,14 @@ var _ = Describe("Context", func() {
 			err := ctx.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			u, err := client.Resource(bindingapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
+			u, err := client.Resource(specapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			updatedSB := bindingapi.ServiceBinding{}
+			updatedSB := specapi.ServiceBinding{}
 			err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &updatedSB)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(updatedSB.Status.Secret).Should(Equal(secret.GetName()))
+			Expect(updatedSB.Status.Binding.Name).Should(Equal(secret.GetName()))
 
 			secretList, err := client.Resource(schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}).List(context.Background(), metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -819,17 +703,17 @@ var _ = Describe("Context", func() {
 			err := ctx.Close()
 			Expect(err).NotTo(HaveOccurred())
 
-			u, err := client.Resource(bindingapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
+			u, err := client.Resource(specapi.GroupVersionResource).Namespace(sb.Namespace).Get(context.Background(), sb.Name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-			updatedSB := bindingapi.ServiceBinding{}
+			updatedSB := specapi.ServiceBinding{}
 			err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &updatedSB)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(updatedSB.Status.Secret).ShouldNot(Equal(secret.GetName()))
-			Expect(updatedSB.Status.Secret).ShouldNot(BeEmpty())
+			Expect(updatedSB.Status.Binding.Name).ShouldNot(Equal(secret.GetName()))
+			Expect(updatedSB.Status.Binding.Name).ShouldNot(BeEmpty())
 
-			u, err = ctx.ReadSecret(sb.Namespace, sb.Status.Secret)
+			u, err = ctx.ReadSecret(sb.Namespace, sb.Status.Binding.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			intermediateSecret := &corev1.Secret{}

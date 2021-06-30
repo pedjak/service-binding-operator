@@ -134,9 +134,9 @@ var _ = Describe("Default Pipeline", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedSB.Status.Secret).NotTo(BeEmpty())
 		Expect(updatedSB.Status.Conditions).To(HaveLen(3))
-		Expect(existCondition(updatedSB.Status.Conditions, v1alpha12.BindingReady, metav1.ConditionTrue)).To(BeTrue())
-		Expect(existCondition(updatedSB.Status.Conditions, v1alpha12.InjectionReady, metav1.ConditionTrue)).To(BeTrue())
-		Expect(existCondition(updatedSB.Status.Conditions, v1alpha12.CollectionReady, metav1.ConditionTrue)).To(BeTrue())
+		Expect(existCondition(updatedSB.Status.Conditions, apis.BindingReady, metav1.ConditionTrue)).To(BeTrue())
+		Expect(existCondition(updatedSB.Status.Conditions, apis.InjectionReady, metav1.ConditionTrue)).To(BeTrue())
+		Expect(existCondition(updatedSB.Status.Conditions, apis.CollectionReady, metav1.ConditionTrue)).To(BeTrue())
 
 		u, err = client.Resource(schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}).Namespace(sb.Namespace).Get(c.Background(), updatedSB.Status.Secret, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
